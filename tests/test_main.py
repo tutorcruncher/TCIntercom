@@ -91,8 +91,10 @@ def test_message_tagged(client):
         'topic': 'conversation_part.tag.created',
         'data': {
             'item': {
-                'tags_added': [{'name': 'Update help article'}],
-                'conversation_parts': [{'body': 'A new issue please'}],
+                'tags_added': {'type': 'tag.list', 'tags': [{'name': 'Update help article'}]},
+                'conversation_parts': {
+                    'type': 'conversation_part.list', 'conversation_parts': [{'body': 'A new issue please'}]
+                },
             }
         },
     }
@@ -104,7 +106,12 @@ def test_message_tagged_wrong_tag(client):
     ic_data = {
         'topic': 'conversation_part.tag.created',
         'data': {
-            'item': {'tags_added': [{'name': 'Not right tag'}], 'conversation_parts': [{'body': 'A new issue please'}]}
+            'item': {
+                'tags_added': {'type': 'tag.list', 'tags': [{'name': 'Wrong tag'}]},
+                'conversation_parts': {
+                    'type': 'conversation_part.list', 'conversation_parts': [{'body': 'A new issue please'}]
+                },
+            }
         },
     }
     r = client.post('/callback/', json=ic_data)

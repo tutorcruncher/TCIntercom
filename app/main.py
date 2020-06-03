@@ -84,11 +84,12 @@ async def check_support_reply(item: dict):
 
 
 async def check_message_tags(item: dict):
-    tags = [t['name'] for t in item['tags_added']]
+    tags = [t['name'] for t in item['tags_added']['tags']]
     if any(t in ['New help article', 'Update help article'] for t in tags):
+        part = item['conversation_parts']['conversation_parts'][0]
         data = {
             'title': 'From IC: ' + ','.join(tags),
-            'body': '**Created from intercom**\n\n' + item['conversation_parts'][0]['body'],
+            'body': '**Created from intercom**\n\n' + part['body'],
             'labels': tags,
         }
         await github_request('/issues/', data)
