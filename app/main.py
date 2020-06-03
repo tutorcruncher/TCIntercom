@@ -108,7 +108,7 @@ async def callback(request: Request):
         msg = await check_support_reply(item_data)
     elif topic == 'conversation_part.tag.created':
         msg = await check_message_tags(item_data)
-    logger.info('msg')
+    logger.info(msg)
     return JSONResponse({'message': msg})
 
 
@@ -140,4 +140,4 @@ app = Starlette(debug=bool(os.getenv('DEBUG')), routes=[Route('/', index), Route
 
 if __name__ == '__main__':
     setup_logging()
-    uvicorn.run(app, host='0.0.0.0', port=os.getenv('PORT', 8000))
+    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('PORT', 8000)))
