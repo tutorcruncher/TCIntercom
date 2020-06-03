@@ -117,9 +117,8 @@ def setup_logging():
     raven_dsn = os.getenv('RAVEN_DSN')
     config = {
         'version': 1,
-        'formatters': {'default': {'format': '%(levelname)s %(name)s %(message)s'}},
         'handlers': {
-            'default': {'level': log_level, 'class': 'logging.StreamHandler', 'formatter': 'default'},
+            'default': {'level': log_level, 'class': 'logging.StreamHandler'},
             'sentry': {
                 'level': 'WARNING',
                 'class': 'raven.handlers.logging.SentryHandler',
@@ -135,7 +134,9 @@ def setup_logging():
     logging.config.dictConfig(config)
 
 
-app = Starlette(debug=bool(os.getenv('DEBUG')), routes=[Route('/', index), Route('/callback/', callback)])
+app = Starlette(
+    debug=bool(os.getenv('DEBUG')), routes=[Route('/', index), Route('/callback/', callback, methods=['POST'])]
+)
 
 
 if __name__ == '__main__':

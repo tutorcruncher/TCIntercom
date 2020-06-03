@@ -10,12 +10,12 @@ def test_index(client):
 
 def test_no_action_needed(client):
     data = {'data': {'item': {'Foo': 'Bar'}}}
-    r = client.get('/callback/', json=data)
+    r = client.post('/callback/', json=data)
     assert r.json() == {'message': 'No action required'}
 
 
 def test_callback_invalid_json(client):
-    r = client.get('/callback/', data='{invalid}')
+    r = client.post('/callback/', data='{invalid}')
     assert r.status_code == 400
 
 
@@ -62,7 +62,7 @@ def test_conv_created_user_no_companies(monkeypatch, client):
         'topic': 'conversation.user.created',
         'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
     }
-    r = client.get('/callback/', json=ic_data)
+    r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'User has no companies'}
 
 
@@ -72,7 +72,7 @@ def test_conv_created_no_support(monkeypatch, client):
         'topic': 'conversation.user.created',
         'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
     }
-    r = client.get('/callback/', json=ic_data)
+    r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Reply successfully posted'}
 
 
@@ -82,7 +82,7 @@ def test_conv_created_has_support(monkeypatch, client):
         'topic': 'conversation.user.created',
         'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
     }
-    r = client.get('/callback/', json=ic_data)
+    r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Company has support'}
 
 
@@ -96,7 +96,7 @@ def test_message_tagged(client):
             }
         },
     }
-    r = client.get('/callback/', json=ic_data)
+    r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Issue created with tags'}
 
 
@@ -107,5 +107,5 @@ def test_message_tagged_wrong_tag(client):
             'item': {'tags_added': [{'name': 'Not right tag'}], 'conversation_parts': [{'body': 'A new issue please'}]}
         },
     }
-    r = client.get('/callback/', json=ic_data)
+    r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'No action required'}
