@@ -1,4 +1,4 @@
 starlette==0.13.4
 requests==2.23.0
 uvicorn==0.11.5
-sentry-sdk==0.14.4
+raven==6.10.0

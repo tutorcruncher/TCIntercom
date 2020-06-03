@@ -116,6 +116,7 @@ def setup_logging():
     log_level = 'DEBUG' if os.getenv('DEBUG') else 'INFO'
     raven_dsn = os.getenv('RAVEN_DSN')
     config = {
+        'version': 1,
         'formatters': {'default': {'format': '%(levelname)s %(name)s %(message)s'}},
         'handlers': {
             'default': {'level': log_level, 'class': 'logging.StreamHandler', 'formatter': 'default'},
