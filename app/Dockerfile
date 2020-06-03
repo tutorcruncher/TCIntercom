@@ -11,4 +11,4 @@ ADD ./main.py /home/root/main.py
 
 ENV PYTHONUNBUFFERED 1
 WORKDIR /home/root
-CMD ["./main.py"]
+CMD ["python ./main.py"]
