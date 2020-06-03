@@ -7,9 +7,8 @@ RUN apt-get update > /dev/null && \
 ADD ./requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
 
-ADD ./app /home/root/app
-ADD ./run.py /home/root/app.py
+ADD ./main.py /home/root/main.py
 
 ENV PYTHONUNBUFFERED 1
 WORKDIR /home/root
-CMD ["./app.py"]
+CMD ["./main.py"]
