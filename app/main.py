@@ -43,7 +43,7 @@ async def github_request(url: str, data: dict):
             'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url, json=data, headers=headers,
         )
         r.raise_for_status()
-        return await r.json()
+        return r.json()
 
 
 SUPPORT_TEMPLATE = """\
@@ -92,7 +92,7 @@ async def check_message_tags(item: dict):
             'body': '**Created from intercom**\n\n' + part['body'],
             'labels': tags,
         }
-        await github_request('/issues/', data)
+        await github_request('/issues', data)
         return 'Issue created with tags'
     return 'No action required'
 
