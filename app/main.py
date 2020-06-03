@@ -1,5 +1,6 @@
 import json
 import logging
+import logging.config
 import os
 from typing import Optional
 
@@ -9,8 +10,6 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
-
-from app.logs import setup_logging
 
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
@@ -111,6 +110,28 @@ async def callback(request: Request):
         msg = await check_message_tags(item_data)
     logger.info('msg')
     return JSONResponse({'message': msg})
+
+
+def setup_logging():
+    log_level = 'DEBUG' if os.getenv('DEBUG') else 'INFO'
+    raven_dsn = os.getenv('RAVEN_DSN')
+    config = {
+        'formatters': {'default': {'format': '%(levelname)s %(name)s %(message)s'}},
+        'handlers': {
+            'default': {'level': log_level, 'class': 'logging.StreamHandler', 'formatter': 'default'},
+            'sentry': {
+                'level': 'WARNING',
+                'class': 'raven.handlers.logging.SentryHandler',
+                'dsn': raven_dsn,
+                'release': os.getenv('COMMIT', None),
+            },
+        },
+        'loggers': {
+            'default': {'handlers': ['default', 'sentry'], 'level': log_level},
+            'uvicorn.error': {'handlers': ['sentry'], 'level': 'ERROR'},
+        },
+    }
+    logging.config.dictConfig(config)
 
 
 app = Starlette(debug=bool(os.getenv('DEBUG')), routes=[Route('/', index), Route('/callback/', callback)])
