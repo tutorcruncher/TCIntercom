@@ -63,7 +63,11 @@ it as soon as possible."""
 
 
 CLOSE_CONV_TEMPLATE = """\
-Closing
+I'm just checking in to see how you got with the issue above?
+
+Since we haven't heard anything for \
+a week, I'm going to assume you don't need any more help and the ticket will close, but feel free to respond to \
+this message to reopen it and I'll be able to get back to you soon.
 """
 
 
@@ -121,7 +125,7 @@ async def check_message_tags(item: dict):
 
 async def close_conv(conv: dict):
     admin_id = conv['assignee']['id'] or ADMIN_BOT
-    data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': 'Closing'}
+    data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': CLOSE_CONV_TEMPLATE}
     await intercom_request(f'conversations/{conv["id"]}/parts', method='POST', data=data)
 
 
