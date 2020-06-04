@@ -2,6 +2,7 @@ import json
 import logging
 import logging.config
 import os
+from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
@@ -14,6 +15,7 @@ from starlette.routing import Route
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
 GH_TOKEN = os.getenv('GH_TOKEN', '')
+ADMIN_BOT = os.getenv('BOT_ADMIN_ID', '2693259')
 
 
 logger = logging.getLogger('default')
@@ -60,6 +62,11 @@ If your query is urgent, please reply with 'This is urgent' and we'll get someon
 it as soon as possible."""
 
 
+CLOSE_CONV_TEMPLATE = """\
+Closing
+"""
+
+
 async def check_support_reply(item: dict):
     user_id = item['user']['id']
     user_data = await intercom_request(f'/contacts/{user_id}/')
@@ -68,14 +75,13 @@ async def check_support_reply(item: dict):
         return 'User has no companies'
     company_data = await intercom_request(companies[0]['url'])
     support_level = company_data.get('custom_attributes', {}).get('support_plan')
-    admin_bot = os.getenv('BOT_ADMIN_ID', '2693259')
     if support_level == 'No Support':
         reply_data = {
             'type': 'admin',
             'message_type': 'comment',
-            'admin_id': admin_bot,
+            'admin_id': ADMIN_BOT,
             'body': SUPPORT_TEMPLATE,
-            'assignee': admin_bot,
+            'assignee': ADMIN_BOT,
         }
         await intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
         return 'Reply successfully posted'
@@ -83,18 +89,52 @@ async def check_support_reply(item: dict):
         return 'Company has support'
 
 
+async def create_issue(part, tags):
+    data = {
+        'title': 'From IC: ' + ','.join(tags),
+        'body': '**Created from intercom**\n\n' + part['body'],
+        'labels': tags,
+    }
+    await github_request('/issues', data)
+
+
+async def snooze_conv_for_close(conv):
+    id = conv['id']
+    admin_id = conv['assignee']['id'] or ADMIN_BOT
+    a_week_hence = (datetime.now() + timedelta(days=7)).timestamp()
+    await intercom_request(
+        f'/conversations/{id}/reply',
+        data={'message_type': 'snoozed', 'snoozed_until': a_week_hence, 'admin_id': admin_id},
+        method='POST',
+    )
+
+
 async def check_message_tags(item: dict):
     tags = [t['name'] for t in item['tags_added']['tags']]
     if any(t in ['New help article', 'Update help article'] for t in tags):
-        part = item['conversation_parts']['conversation_parts'][0]
-        data = {
-            'title': 'From IC: ' + ','.join(tags),
-            'body': '**Created from intercom**\n\n' + part['body'],
-            'labels': tags,
-        }
-        await github_request('/issues', data)
+        await create_issue(item['conversation_parts']['conversation_parts'][0], tags)
         return 'Issue created with tags'
-    return 'No action required'
+    if 'Snooze then close' in tags:
+        await snooze_conv_for_close(item)
+        return 'Conversation snoozed while waiting for reply'
+
+
+async def close_conv(conv: dict):
+    admin_id = conv['assignee']['id'] or ADMIN_BOT
+    data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': 'Closing'}
+    await intercom_request(f'conversations/{conv["id"]}/parts', method='POST', data=data)
+
+
+async def check_unsnoozed_conv(item: dict):
+    tags = [t['name'] for t in item['tags']['tags']]
+    if 'Snooze then close' in tags:
+        # The normal item doesn't have the request info
+        conv_details = await intercom_request(f'/conversations/{item["id"]}')
+        conv_stats = conv_details['statistics']
+        a_week_prev = (datetime.now() - timedelta(days=7)).timestamp()
+        if max(conv_stats['last_contact_reply_at'], conv_stats['last_contact_reply_at']) < a_week_prev:
+            await close_conv(item)
+            return 'Conversation closed because of inactivity'
 
 
 async def callback(request: Request):
@@ -106,10 +146,12 @@ async def callback(request: Request):
     topic = data.get('topic')
     msg = 'No action required'
     if topic == 'conversation.user.created':
-        msg = await check_support_reply(item_data)
+        msg = await check_support_reply(item_data) or msg
     elif topic == 'conversation_part.tag.created':
-        msg = await check_message_tags(item_data)
-    logger.info(msg)
+        msg = await check_message_tags(item_data) or msg
+    elif topic == 'conversation.admin.unsnoozed':
+        msg = await check_unsnoozed_conv(item_data) or msg
+    logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
 
 
