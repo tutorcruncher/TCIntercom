@@ -61,7 +61,7 @@ it as soon as possible."""
 
 
 async def check_support_reply(item: dict):
-    user_id = item['user']['user_id']
+    user_id = item['user']['id']
     user_data = await intercom_request(f'/contacts/{user_id}/')
     companies = user_data.get('companies', {}).get('data')
     if not companies:

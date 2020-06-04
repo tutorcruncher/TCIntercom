@@ -60,7 +60,7 @@ def test_conv_created_user_no_companies(monkeypatch, client):
 
     ic_data = {
         'topic': 'conversation.user.created',
-        'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
+        'data': {'item': {'user': {'id': 123}, 'id': 123}},
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'User has no companies'}
@@ -70,7 +70,7 @@ def test_conv_created_no_support(monkeypatch, client):
     monkeypatch.setattr(session, 'request', get_mock_response('no_support'))
     ic_data = {
         'topic': 'conversation.user.created',
-        'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
+        'data': {'item': {'user': {'id': 123}, 'id': 123}},
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Reply successfully posted'}
@@ -80,7 +80,7 @@ def test_conv_created_has_support(monkeypatch, client):
     monkeypatch.setattr(session, 'request', get_mock_response('has_support'))
     ic_data = {
         'topic': 'conversation.user.created',
-        'data': {'item': {'user': {'user_id': 123}, 'id': 123}},
+        'data': {'item': {'user': {'id': 123}, 'id': 123}},
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Company has support'}
