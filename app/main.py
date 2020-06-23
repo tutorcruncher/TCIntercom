@@ -126,7 +126,7 @@ async def check_message_tags(item: dict):
 async def close_conv(conv: dict):
     admin_id = conv['assignee']['id'] or ADMIN_BOT
     data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': CLOSE_CONV_TEMPLATE}
-    await intercom_request(f'conversations/{conv["id"]}/parts', method='POST', data=data)
+    await intercom_request(f'/conversations/{conv["id"]}/parts', method='POST', data=data)
 
 
 async def check_unsnoozed_conv(item: dict):
@@ -136,7 +136,9 @@ async def check_unsnoozed_conv(item: dict):
         conv_details = await intercom_request(f'/conversations/{item["id"]}')
         conv_stats = conv_details['statistics']
         a_week_prev = (datetime.now() - timedelta(days=7)).timestamp()
-        if max(conv_stats['last_contact_reply_at'], conv_stats['last_contact_reply_at']) < a_week_prev:
+        dt = max(conv_stats['last_contact_reply_at'] or 0, conv_stats['last_admin_reply_at'] or 0)
+        logger.info('Checking conv %s with last reply %s against %s', item['id'], dt, a_week_prev)
+        if dt < a_week_prev:
             await close_conv(item)
             return 'Conversation closed because of inactivity'
 
