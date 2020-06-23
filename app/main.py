@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
+import sentry_sdk
 import uvicorn as uvicorn
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -23,6 +25,10 @@ logger = logging.getLogger('default')
 
 async def index(request: Request):
     return Response("TutorCruncher's service for managing Intercom is Online")
+
+
+async def raise_error(request: Request):
+    raise RuntimeError('Purposeful error')
 
 
 async def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
@@ -161,33 +167,17 @@ async def callback(request: Request):
     return JSONResponse({'message': msg})
 
 
-def setup_logging():
-    log_level = 'DEBUG' if os.getenv('DEBUG') else 'INFO'
-    raven_dsn = os.getenv('RAVEN_DSN')
-    config = {
-        'version': 1,
-        'handlers': {
-            'default': {'level': log_level, 'class': 'logging.StreamHandler'},
-            'sentry': {
-                'level': 'WARNING',
-                'class': 'raven.handlers.logging.SentryHandler',
-                'dsn': raven_dsn,
-                'release': os.getenv('COMMIT', None),
-            },
-        },
-        'loggers': {
-            'default': {'handlers': ['default', 'sentry'], 'level': log_level},
-            'uvicorn.error': {'handlers': ['sentry'], 'level': 'ERROR'},
-        },
-    }
-    logging.config.dictConfig(config)
-
-
 app = Starlette(
-    debug=bool(os.getenv('DEBUG')), routes=[Route('/', index), Route('/callback/', callback, methods=['POST'])]
+    debug=bool(os.getenv('DEBUG')),
+    routes=[
+        Route('/', index),
+        Route('/callback/', callback, methods=['POST']),
+        Route('/error/', raise_error)
+    ]
 )
-
+if dsn := os.getenv('RAVEN_DSN'):
+    sentry_sdk.init(dsn=dsn)
+    app.add_middleware(SentryAsgiMiddleware)
 
 if __name__ == '__main__':
-    setup_logging()
     uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('PORT', 8000)))
