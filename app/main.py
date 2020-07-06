@@ -14,6 +14,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+import kare
+
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
 GH_TOKEN = os.getenv('GH_TOKEN', '')
@@ -172,6 +174,7 @@ app = Starlette(
     routes=[
         Route('/', index),
         Route('/callback/', callback, methods=['POST']),
+        Route('/deploy-hook/', kare.callback),
         Route('/error/', raise_error)
     ]
 )
