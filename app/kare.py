@@ -1,7 +1,7 @@
 import logging
 import os
-import tempfile
 from io import BytesIO
+from urllib.parse import urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 KARE_SECRET = os.getenv('KARE_SECRET')
 KARE_ID = os.getenv('KARE_ID')
 KARE_URL = os.getenv('KARE_URL', 'https://api.eu.karehq.com')
-TC_BASE_URL = os.getenv('TC_HELP_URL', 'http://localhost:8000')
+TC_BASE_URL = os.getenv('TC_HELP_URL', 'http://tutorcruncher.com')
 
 
 session = requests.session()
@@ -38,44 +38,68 @@ class KareClient:
         elif method == 'POST':
             r = session.post(url=f'{KARE_URL}/v2.2/{url}', headers=headers, json=data)
         else:
-            r = session.get(url=f'{KARE_URL}/v2.2/{url}?token={self.token}', headers=headers)
-        try:
-            r.raise_for_status()
+            r = session.get(url=f'{KARE_URL}/v2.2/{url}?token={self.token}&{urlencode(data or {})}', headers=headers)
+        r.raise_for_status()
         try:
             return r.json()
         except ValueError:
             return r.text
 
-    def get_node(self, id):
-        return self.kare_request(f'kbm/nodes/{id}/content/raw')
+    def _get_node(self, id) -> dict:
+        return self.kare_request(f'kbm/nodes/{id}/')
 
-    def get_knowledge(self, cursor=None):
-        if cursor:
-            data = self.kare_request(
+    def _get_node_content(self, id) -> dict:
+        return self.kare_request(f'kbm/nodes/{id}/content/public')
+
+    def _get_knowledge(self, cursor=None):
+        new_data: dict = self.kare_request('kbm/nodes', data={'type': 'content', 'limit': 100, 'status': 'published'})
+        self.entries += new_data['entries']
+        while len(new_data['entries']) == 100 and (cursor := new_data.get('next_cursor')):
+            new_data = self.kare_request(
                 'kbm/nodes', data={'type': 'content', 'limit': 10, 'status': 'published', 'cursor': cursor}
             )
-        else:
-            data = self.kare_request('kbm/nodes', data={'type': 'content', 'limit': 10, 'status': 'published'})
-        self.entries += data['entries']
-        # if cursor := data.get('next_cursor'):
-        #     self.get_knowledge(cursor)
+            self.entries += new_data['entries']
 
-    def create_nodes(self, tc_knowledge: iter):
-        for item in tc_knowledge:
+    def _upload_node_content(self, id, content):
+        with BytesIO() as file:
+            file.write(content.encode())
+            file.seek(0)
+            self.kare_request(
+                f'kbm/nodes/{id}/content', method='POST', data={'mime_type': 'text/html'}, files={'content': file}
+            )
+
+    def create_nodes(self, tc_data: dict):
+        for url, tc_item in tc_data.items():
             create_node_data = {
                 'status': 'published',
                 'type': 'content',
-                'title': item['title'],
+                'title': tc_item['title'],
                 'content': {
-                    'source': item['url'], 'external_id': item['title'], 'mime_type': 'text/html'
+                    'source': 'tutorcruncher.com',
+                    'external_id': tc_item['title'],
+                    'mime_type': 'text/html',
+                    'url': url,
                 }
             }
-            node_id = self.kare_request('kbm/nodes', method='POST', data=create_node_data)['id']
-            with BytesIO() as file:
-                file.write(item['content'].encode())
-                file.seek(0)
-                logger.info(f'Creating file {item["url"]}')
-                self.kare_request(f'kbm/nodes/{node_id}/content', method='POST', files={'content': file})
+            node_data: dict = self.kare_request('kbm/nodes', method='POST', data=create_node_data)
+            logger.info('Creating content for %s', url)
+            self._upload_node_content(node_data['id'], tc_item['content'])
+
+    def update_nodes(self):
+        tc_data = build_tc_knowledge()
+        self._get_knowledge()
+        for entry in kare.entries:
+            node_id = entry['id']
+            node = self._get_node(node_id)
+            if not (url := node['content'].get('url')):
+                continue
+            kare_content = self._get_node_content(node_id)
+            tc_content = tc_data.pop(url)
+            if kare_content != tc_content:
+                logger.info(f'Updating node %s for url %s', node_id, url)
+                self._upload_node_content(node_id, tc_content['content'])
+        # Then we need to add the new items that are in the help site but not in Kare
+        self.create_nodes(tc_data)
 
 
 def parse_contents(contents):
@@ -86,38 +110,34 @@ def parse_contents(contents):
     )
 
 
-def build_tc_knowledge():
+def build_tc_knowledge() -> dict:
+    logger.info('Downloading TC knowledge')
     r = session.get('https://tutorcruncher.com/sitemap.xml')
     r.raise_for_status()
     bs = BeautifulSoup(r.content.decode(), features='html.parser')
     urls = []
+    tc_data = {}
     for url in bs.find_all('loc'):
         url = url.get_text()
-        if '/help/' in url and not url.endswith('/help/'):
+        if '/help/' in url and not url.endswith('/help/') and not url.endswith('/api/'):
             urls.append(url)
-    for url in urls[:5]:
+    for url in urls:
         r = session.get(url)
         r.raise_for_status()
         bs = BeautifulSoup(r.content.decode(), features='html.parser')
         help_content = bs.find_all('div', class_='help-content')
         if not help_content:
             continue
-        yield {
-            'url': url,
-            'title': f"Content from {url.replace(TC_BASE_URL, '')}",
-            'content': parse_contents(help_content[0].contents),
+        tc_data[url] = {
+            'title': bs.title.get_text().replace(' • TutorCruncher', ''),
+            'content': '<html><body>' + parse_contents(help_content[0].contents) + '</body></html>',
         }
 
-
-# def callback(request: requests.Request):
-#     logger.info('Callback received from a successful deploy. Updating help content')
-#     kare = KareClient()
-#     kare.get_knowledge()
-#     tc_knowledge = build_tc_knowledge()
+    logger.info('Found %s pages of TC help knowledge', len(tc_data))
+    return tc_data
 
 
-if __name__ == '__main__':
-    tc_knowledge = build_tc_knowledge()
+def callback(request: requests.Request):
+    logger.info('Callback received from a successful deploy. Updating help content')
     kare = KareClient()
-    kare.create_nodes(tc_knowledge)
-    # kare.update_nodes(tc_knowledge)
+    kare.update_nodes()
