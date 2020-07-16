@@ -1,5 +1,4 @@
 import json
-import logging
 import logging.config
 import os
 from datetime import datetime, timedelta
@@ -14,7 +13,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-import kare
+from app import kare
 
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
@@ -175,9 +174,10 @@ app = Starlette(
         Route('/', index),
         Route('/callback/', callback, methods=['POST']),
         Route('/deploy-hook/', kare.callback),
-        Route('/error/', raise_error)
-    ]
+        Route('/error/', raise_error),
+    ],
 )
+
 if dsn := os.getenv('RAVEN_DSN'):
     sentry_sdk.init(dsn=dsn)
     app.add_middleware(SentryAsgiMiddleware)

@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 import requests
 from bs4 import BeautifulSoup
+from starlette.responses import Response
 
 KARE_SECRET = os.getenv('KARE_SECRET')
 KARE_ID = os.getenv('KARE_ID')
@@ -21,24 +22,27 @@ class KareClient:
     token = None
 
     def __init__(self):
-        r = session.post(f'{KARE_URL}/oauth/token', json={
-            'client_id': KARE_ID, 'client_secret': KARE_SECRET, 'grant_type': 'client_credentials'
-        }, headers={'Content-Type': 'application/json'})
+        r = session.post(
+            f'{KARE_URL}/oauth/token',
+            json={'client_id': KARE_ID, 'client_secret': KARE_SECRET, 'grant_type': 'client_credentials'},
+            headers={'Content-Type': 'application/json'},
+        )
         r.raise_for_status()
         self.token = r.json()['access_token']
         self.entries = []
 
     def kare_request(self, url, method='GET', data=None, files=None):
-        headers = {
-            'Authorization': f'Bearer {self.token}', 'Content-Type': 'application/json', 'Kare-Content-Locale': 'en-GB'
-        }
-        if files:
-            headers.pop('Content-Type')
-            r = session.post(url=f'{KARE_URL}/v2.2/{url}', headers=headers, files=files)
-        elif method == 'POST':
-            r = session.post(url=f'{KARE_URL}/v2.2/{url}', headers=headers, json=data)
+        headers = {'Authorization': f'Bearer {self.token}', 'Kare-Content-Locale': 'en-GB'}
+        url = f'{KARE_URL}/v2.2/{url}'
+        if method == 'POST':
+            if files:
+                r = session.post(url, headers=headers, files=files)
+            else:
+                # headers['Content-Type'] = 'application/json'
+                r = session.post(url, headers=headers, json=data)
         else:
-            r = session.get(url=f'{KARE_URL}/v2.2/{url}?token={self.token}&{urlencode(data or {})}', headers=headers)
+            get_args = {'token': self.token, **(data or {})}
+            r = session.get(url=f'{url}?{urlencode(get_args)}', headers=headers)
         r.raise_for_status()
         try:
             return r.json()
@@ -51,7 +55,7 @@ class KareClient:
     def _get_node_content(self, id) -> dict:
         return self.kare_request(f'kbm/nodes/{id}/content/public')
 
-    def _get_knowledge(self, cursor=None):
+    def _update_knowledge(self, cursor=None):
         new_data: dict = self.kare_request('kbm/nodes', data={'type': 'content', 'limit': 100, 'status': 'published'})
         self.entries += new_data['entries']
         while len(new_data['entries']) == 100 and (cursor := new_data.get('next_cursor')):
@@ -79,7 +83,7 @@ class KareClient:
                     'external_id': tc_item['title'],
                     'mime_type': 'text/html',
                     'url': url,
-                }
+                },
             }
             node_data: dict = self.kare_request('kbm/nodes', method='POST', data=create_node_data)
             logger.info('Creating content for %s', url)
@@ -87,8 +91,8 @@ class KareClient:
 
     def update_nodes(self):
         tc_data = build_tc_knowledge()
-        self._get_knowledge()
-        for entry in kare.entries:
+        self._update_knowledge()
+        for entry in self.entries:
             node_id = entry['id']
             node = self._get_node(node_id)
             if not (url := node['content'].get('url')):
@@ -96,7 +100,7 @@ class KareClient:
             kare_content = self._get_node_content(node_id)
             tc_content = tc_data.pop(url)
             if kare_content != tc_content:
-                logger.info(f'Updating node %s for url %s', node_id, url)
+                logger.info('Updating node %s for url %s', node_id, url)
                 self._upload_node_content(node_id, tc_content['content'])
         # Then we need to add the new items that are in the help site but not in Kare
         self.create_nodes(tc_data)
@@ -105,8 +109,8 @@ class KareClient:
 def parse_contents(contents):
     return (
         ''.join([str(x) for x in contents])
-        .replace('src="/', f'src="https://tutorcruncher.com/')
-        .replace('href="/', f'href="https://tutorcruncher.com/')
+        .replace('src="/', 'src="https://tutorcruncher.com/')
+        .replace('href="/', 'href="https://tutorcruncher.com/')
     )
 
 
@@ -141,3 +145,4 @@ def callback(request: requests.Request):
     logger.info('Callback received from a successful deploy. Updating help content')
     kare = KareClient()
     kare.update_nodes()
+    return Response('OK')
