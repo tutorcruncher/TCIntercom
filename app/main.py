@@ -13,7 +13,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from app import kare
+try:
+    import kare
+except ModuleNotFoundError:
+    from . import kare
 
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
