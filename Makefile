@@ -4,7 +4,7 @@ install:
 
 .PHONY: test
 test:
-	pytest tests/
+	pytest tests/ --cov app/
 
 .PHONY: format
 format:
