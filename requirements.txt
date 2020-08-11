@@ -1,2 +1,2 @@
--r app/requirements.txt
+-r tcintercom/requirements.txt
 -r tests/requirements.txt

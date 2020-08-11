@@ -1,5 +1,5 @@
-starlette==0.13.4
-requests==2.23.0
-uvicorn==0.11.5
+starlette==0.13.7
+requests==2.24.0
+uvicorn==0.11.7
 sentry_sdk==0.14.4
 beautifulsoup4==4.9.1
