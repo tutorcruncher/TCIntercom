@@ -38,7 +38,6 @@ class KareClient:
             if files:
                 r = session.post(url, headers=headers, files=files)
             else:
-                # headers['Content-Type'] = 'application/json'
                 r = session.post(url, headers=headers, json=data)
         else:
             get_args = {'token': self.token, **(data or {})}

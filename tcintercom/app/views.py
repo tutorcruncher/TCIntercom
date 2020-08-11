@@ -1,29 +1,18 @@
 import json
-import logging.config
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
-import sentry_sdk
-import uvicorn as uvicorn
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from starlette.routing import Route
+from starlette.responses import Response, JSONResponse
 
-try:
-    import kare
-except ModuleNotFoundError:
-    from . import kare
 
 session = requests.Session()
 IC_TOKEN = os.getenv('IC_TOKEN', '')
 GH_TOKEN = os.getenv('GH_TOKEN', '')
 ADMIN_BOT = os.getenv('BOT_ADMIN_ID', '2693259')
-
-
 logger = logging.getLogger('default')
 
 
@@ -70,8 +59,6 @@ support plan and we'll check 😃
 
 If your query is urgent, please reply with 'This is urgent' and we'll get someone to look at \
 it as soon as possible."""
-
-
 CLOSE_CONV_TEMPLATE = """\
 I'm just checking in to see how you got with the issue above?
 
@@ -169,21 +156,3 @@ async def callback(request: Request):
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
-
-
-app = Starlette(
-    debug=bool(os.getenv('DEBUG')),
-    routes=[
-        Route('/', index),
-        Route('/callback/', callback, methods=['POST']),
-        Route('/deploy-hook/', kare.callback),
-        Route('/error/', raise_error),
-    ],
-)
-
-if dsn := os.getenv('RAVEN_DSN'):
-    sentry_sdk.init(dsn=dsn)
-    app.add_middleware(SentryAsgiMiddleware)
-
-if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('PORT', 8000)))

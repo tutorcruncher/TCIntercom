@@ -6,5 +6,5 @@ RUN pip install -r /home/app/requirements.txt
 ADD ./main.py /home/app/main.py
 
 ENV PYTHONUNBUFFERED 1
-WORKDIR /home/app
+WORKDIR /home/tcintercom
 CMD python main.py

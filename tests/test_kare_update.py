@@ -1,7 +1,7 @@
 import copy
 import re
 
-from app.kare import session
+from tcintercom.app.kare import session
 
 FOO_CONTENT = (
     '<html><body>'
