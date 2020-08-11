@@ -4,7 +4,7 @@ install:
 
 .PHONY: test
 test:
-	pytest tests/ --cov tcintercom/
+	pytest --cov=tcintercom
 
 .PHONY: format
 format:
