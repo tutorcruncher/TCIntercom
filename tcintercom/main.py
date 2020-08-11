@@ -6,8 +6,8 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.applications import Starlette
 from starlette.routing import Route
 
-from app.views import index, raise_error, callback
-from app.kare import callback as kare_callback
+from .app.views import index, raise_error, callback
+from .app.kare import callback as kare_callback
 
 app = Starlette(
     debug=bool(os.getenv('DEBUG')),
