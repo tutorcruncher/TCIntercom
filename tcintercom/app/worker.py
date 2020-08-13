@@ -139,7 +139,7 @@ def build_tc_knowledge() -> dict:
     return tc_data
 
 
-def check_kare_data(ctx):
+async def check_kare_data(ctx):
     logger.info('Callback received from a successful deploy. Updating help content')
     kare = KareClient(settings=ctx['settings'])
     kare.update_nodes()

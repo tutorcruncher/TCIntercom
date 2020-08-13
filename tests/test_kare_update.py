@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import re
 
@@ -119,7 +120,8 @@ def test_run_update(monkeypatch, client):
     assert len(fake_kare_db['entries']) == 2
     r = client.get('/deploy-hook/')
     assert r.status_code == 200
-    check_kare_data({'settings': Settings()})
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(check_kare_data({'settings': Settings()}))
     assert len(fake_kare_db['entries']) == 3
     foo_node = next(n for n in fake_kare_db['entries'] if n['id'] == 'node_foo')
     bar_node = next(n for n in fake_kare_db['entries'] if n['id'] == 'node_bar')
