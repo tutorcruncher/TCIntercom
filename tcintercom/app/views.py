@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse, Response
 from .settings import Settings
 
 session = requests.Session()
-logger = logging.getLogger('default')
+logger = logging.getLogger('tc-intercom.views')
 
 conf = Settings()
 

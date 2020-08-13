@@ -9,7 +9,7 @@ from .settings import Settings
 
 session = requests.session()
 
-logger = logging.getLogger('default')
+logger = logging.getLogger('tc-intercom.worker')
 
 
 class KareClient:

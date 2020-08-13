@@ -8,4 +8,5 @@ ADD run.py /home/root/run.py
 
 ENV PYTHONUNBUFFERED 1
 WORKDIR /home/root
-CMD python run.py
+ENTRYPOINT ["./run.py"]
+CMD ["auto"]
