@@ -28,5 +28,5 @@ class Settings(BaseSettings):
             'kare_secret': {'env': 'KARE_SECRET'},
             'kare_id': {'env': 'KARE_ID'},
             'redis_url': {'env': 'REDIS_URL'},
-            'ic_bot_id': {'env': 'IC_BOT_ID'}
+            'ic_bot_id': {'env': 'IC_BOT_ID'},
         }

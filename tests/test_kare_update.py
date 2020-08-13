@@ -1,7 +1,8 @@
 import copy
 import re
 
-from tcintercom.app.kare import session
+from tcintercom.app.settings import Settings
+from tcintercom.app.worker import check_kare_data, session
 
 FOO_CONTENT = (
     '<html><body>'
@@ -115,8 +116,10 @@ def test_run_update(monkeypatch, client):
     fake_kare_db = copy.deepcopy(FAKE_KARE_DB)
     monkeypatch.setattr(session, 'get', mock_responses(fake_kare_db, full=True))
     monkeypatch.setattr(session, 'post', mock_responses(fake_kare_db, method='POST', full=True))
+    assert len(fake_kare_db['entries']) == 2
     r = client.get('/deploy-hook/')
     assert r.status_code == 200
+    check_kare_data({'settings': Settings()})
     assert len(fake_kare_db['entries']) == 3
     foo_node = next(n for n in fake_kare_db['entries'] if n['id'] == 'node_foo')
     bar_node = next(n for n in fake_kare_db['entries'] if n['id'] == 'node_bar')

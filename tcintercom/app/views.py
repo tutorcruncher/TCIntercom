@@ -5,7 +5,7 @@ from typing import Optional
 
 import requests
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from .settings import Settings
 
@@ -155,3 +155,8 @@ async def callback(request: Request):
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
+
+
+async def deploy_hook(request: Request):
+    await request.app.redis.enqueue_job('check_kare_data')
+    return Response('OK')

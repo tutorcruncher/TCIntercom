@@ -4,7 +4,6 @@ from urllib.parse import urlencode
 
 import requests
 from bs4 import BeautifulSoup
-from starlette.responses import Response
 
 from .settings import Settings
 
@@ -21,7 +20,9 @@ class KareClient:
         r = session.post(
             f'{settings.kare_url}/oauth/token',
             json={
-                'client_id': settings.kare_id, 'client_secret': settings.kare_secret, 'grant_type': 'client_credentials'
+                'client_id': settings.kare_id,
+                'client_secret': settings.kare_secret,
+                'grant_type': 'client_credentials',
             },
             headers={'Content-Type': 'application/json'},
         )
@@ -138,8 +139,11 @@ def build_tc_knowledge() -> dict:
     return tc_data
 
 
-def callback(request: requests.Request):
+def check_kare_data(ctx):
     logger.info('Callback received from a successful deploy. Updating help content')
-    kare = KareClient(settings=request.app.settings)
+    kare = KareClient(settings=ctx['settings'])
     kare.update_nodes()
-    return Response('OK')
+
+
+class WorkerSettings:
+    functions = [check_kare_data]
