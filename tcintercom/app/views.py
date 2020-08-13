@@ -1,19 +1,18 @@
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 
+from .settings import Settings
 
 session = requests.Session()
-IC_TOKEN = os.getenv('IC_TOKEN', '')
-GH_TOKEN = os.getenv('GH_TOKEN', '')
-ADMIN_BOT = os.getenv('BOT_ADMIN_ID', '2693259')
 logger = logging.getLogger('default')
+
+conf = Settings()
 
 
 async def index(request: Request):
@@ -27,19 +26,19 @@ async def raise_error(request: Request):
 async def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
     data = data or {}
     headers = {
-        'Authorization': 'Bearer ' + IC_TOKEN,
+        'Authorization': 'Bearer ' + conf.ic_token,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
-    if not (method == 'POST' and not IC_TOKEN):
+    if not (method == 'POST' and not conf.ic_token):
         r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
         r.raise_for_status()
         return r.json()
 
 
 async def github_request(url: str, data: dict):
-    if GH_TOKEN:
-        headers = {'Authorization': 'Bearer ' + GH_TOKEN}
+    if conf.gh_token:
+        headers = {'Authorization': 'Bearer ' + conf.gh_token}
         r = session.post(
             'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url, json=data, headers=headers,
         )
@@ -80,9 +79,9 @@ async def check_support_reply(item: dict):
         reply_data = {
             'type': 'admin',
             'message_type': 'comment',
-            'admin_id': ADMIN_BOT,
+            'admin_id': conf.ic_bot_id,
             'body': SUPPORT_TEMPLATE,
-            'assignee': ADMIN_BOT,
+            'assignee': conf.ic_bot_id,
         }
         await intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
         return 'Reply successfully posted'
@@ -101,7 +100,7 @@ async def create_issue(part, tags):
 
 async def snooze_conv_for_close(conv):
     id = conv['id']
-    admin_id = conv['assignee']['id'] or ADMIN_BOT
+    admin_id = conv['assignee']['id'] or conf.ic_bot_id
     a_week_hence = (datetime.now() + timedelta(days=7)).timestamp()
     await intercom_request(
         f'/conversations/{id}/reply',
@@ -121,7 +120,7 @@ async def check_message_tags(item: dict):
 
 
 async def close_conv(conv: dict):
-    admin_id = conv['assignee']['id'] or ADMIN_BOT
+    admin_id = conv['assignee']['id'] or conf.ic_bot_id
     data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': CLOSE_CONV_TEMPLATE}
     await intercom_request(f'/conversations/{conv["id"]}/parts', method='POST', data=data)
 
@@ -156,3 +155,8 @@ async def callback(request: Request):
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
+
+
+async def deploy_hook(request: Request):
+    await request.app.redis.enqueue_job('check_kare_data')
+    return Response('OK')
