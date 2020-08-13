@@ -1,5 +1,4 @@
 import logging
-import os
 from io import BytesIO
 from urllib.parse import urlencode
 
@@ -7,11 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 from starlette.responses import Response
 
-KARE_SECRET = os.getenv('KARE_SECRET')
-KARE_ID = os.getenv('KARE_ID')
-KARE_URL = os.getenv('KARE_URL', 'https://api.eu.karehq.com')
-TC_BASE_URL = os.getenv('TC_HELP_URL', 'http://tutorcruncher.com')
-
+from .settings import Settings
 
 session = requests.session()
 
@@ -21,10 +16,13 @@ logger = logging.getLogger('default')
 class KareClient:
     token = None
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
+        self.settings = settings
         r = session.post(
-            f'{KARE_URL}/oauth/token',
-            json={'client_id': KARE_ID, 'client_secret': KARE_SECRET, 'grant_type': 'client_credentials'},
+            f'{settings.kare_url}/oauth/token',
+            json={
+                'client_id': settings.kare_id, 'client_secret': settings.kare_secret, 'grant_type': 'client_credentials'
+            },
             headers={'Content-Type': 'application/json'},
         )
         r.raise_for_status()
@@ -33,7 +31,7 @@ class KareClient:
 
     def kare_request(self, url, method='GET', data=None, files=None):
         headers = {'Authorization': f'Bearer {self.token}', 'Kare-Content-Locale': 'en-GB'}
-        url = f'{KARE_URL}/v2.2/{url}'
+        url = f'{self.settings.kare_url}/v2.2/{url}'
         if method == 'POST':
             if files:
                 r = session.post(url, headers=headers, files=files)
@@ -142,6 +140,6 @@ def build_tc_knowledge() -> dict:
 
 def callback(request: requests.Request):
     logger.info('Callback received from a successful deploy. Updating help content')
-    kare = KareClient()
+    kare = KareClient(settings=request.app.settings)
     kare.update_nodes()
     return Response('OK')

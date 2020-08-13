@@ -7,6 +7,7 @@ from starlette.routing import Route
 
 from .kare import callback as kare_callback
 from .views import index, callback, raise_error
+from .settings import Settings
 
 
 def create_app():
@@ -23,4 +24,5 @@ def create_app():
     if dsn := os.getenv('RAVEN_DSN'):
         sentry_sdk.init(dsn=dsn)
         starlette_app.add_middleware(SentryAsgiMiddleware)
+    starlette_app.settings = Settings()
     return starlette_app
