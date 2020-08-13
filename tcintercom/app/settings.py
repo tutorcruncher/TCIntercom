@@ -11,12 +11,12 @@ class Settings(BaseSettings):
     kare_id: str = ''
     kare_secret: str = ''
     kare_url: str = 'https://api.eu.karehq.com'
-    redis_dsn: str = 'redis://localhost:6379'
+    redis_url: str = 'redis://localhost:6379'
     tc_url: str = 'http://tutorcruncher.com'
 
     @property
     def redis_settings(self):
-        conf = urlparse(self.redis_dsn)
+        conf = urlparse(self.redis_url)
         return RedisSettings(
             host=conf.hostname, port=conf.port, password=conf.password, database=int((conf.path or '0').strip('/'))
         )
@@ -27,6 +27,6 @@ class Settings(BaseSettings):
             'ic_token': {'env': 'IC_TOKEN'},
             'kare_secret': {'env': 'KARE_SECRET'},
             'kare_id': {'env': 'KARE_ID'},
-            'redis_dsn': {'env': 'REDIS_DSN'},
+            'redis_url': {'env': 'REDIS_URL'},
             'ic_bot_id': {'env': 'IC_BOT_ID'},
         }
