@@ -3,11 +3,10 @@ import logging
 import os
 
 import uvicorn
-from arq import run_worker
-
 from app.main import create_app
 from app.settings import Settings
 from app.worker import WorkerSettings
+from arq import run_worker
 
 logger = logging.getLogger('default')
 
