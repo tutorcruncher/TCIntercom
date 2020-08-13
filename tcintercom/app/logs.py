@@ -1,6 +1,5 @@
 import logging
 import logging.config
-import os
 
 
 def setup_logging(verbose: bool = False):
@@ -14,10 +13,7 @@ def setup_logging(verbose: bool = False):
         'formatters': {'tc-intercom': {'format': '%(levelname)s %(name)s %(message)s'}},
         'handlers': {
             'tc-intercom': {'level': log_level, 'class': 'logging.StreamHandler', 'formatter': 'tc-intercom'},
-            'sentry': {
-                'level': 'WARNING',
-                'class': 'sentry_sdk.integrations.logging.SentryHandler',
-            },
+            'sentry': {'level': 'WARNING', 'class': 'sentry_sdk.integrations.logging.SentryHandler'},
         },
         'loggers': {
             'tc-intercom': {'handlers': ['tc-intercom', 'sentry'], 'level': log_level},

@@ -4,7 +4,6 @@ import os
 
 import click
 import uvicorn
-
 from app.logs import setup_logging
 from app.main import create_app
 from app.settings import Settings
