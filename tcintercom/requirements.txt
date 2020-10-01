@@ -1,7 +1,7 @@
 starlette==0.13.7
 requests==2.24.0
 uvicorn==0.11.8
-sentry_sdk==0.16.3
+sentry_sdk==0.18.0
 beautifulsoup4==4.9.1
 pydantic==1.6.1
 arq==0.19
