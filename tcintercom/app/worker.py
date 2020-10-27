@@ -112,6 +112,9 @@ def parse_contents(contents):
     )
 
 
+EXCLUDED_HELP_PAGES = ['/help/', '/api/', '/tutors/', '/help-videos/', '/pdf-guides/']
+
+
 def build_tc_knowledge() -> dict:
     logger.info('Downloading TC knowledge')
     r = session.get('https://tutorcruncher.com/sitemap.xml')
@@ -121,7 +124,7 @@ def build_tc_knowledge() -> dict:
     tc_data = {}
     for url in bs.find_all('loc'):
         url = url.get_text()
-        if '/help/' in url and not url.endswith('/help/') and not url.endswith('/api/'):
+        if '/help/' in url and not any(url.endswith(page_url) for page_url in EXCLUDED_HELP_PAGES):
             urls.append(url)
     for url in urls:
         r = session.get(url)
