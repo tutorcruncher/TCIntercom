@@ -6,8 +6,8 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.applications import Starlette
 from starlette.routing import Route
 
-from .settings import Settings
-from .views import callback, deploy_hook, index, raise_error
+from tcsupport.app.settings import Settings
+from tcsupport.tc_intercom.views import callback, deploy_hook, index, raise_error
 
 
 async def lifespan(app):

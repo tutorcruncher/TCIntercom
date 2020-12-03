@@ -4,11 +4,12 @@ import os
 
 import click
 import uvicorn
-from app.logs import setup_logging
-from app.main import create_app
-from app.settings import Settings
-from app.worker import WorkerSettings
 from arq import run_worker
+
+from tcsupport.app.logs import setup_logging
+from tcsupport.app.main import create_app
+from tcsupport.app.settings import Settings
+from tcsupport.app.worker import WorkerSettings
 
 logger = logging.getLogger('tc-intercom.run')
 

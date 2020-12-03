@@ -2,8 +2,8 @@ import asyncio
 import copy
 import re
 
-from tcintercom.app.settings import Settings
-from tcintercom.app.worker import check_kare_data, session
+from tcsupport.app.settings import Settings
+from tcsupport.app.worker import check_kare_data, session
 
 FOO_CONTENT = (
     '<html><body>'

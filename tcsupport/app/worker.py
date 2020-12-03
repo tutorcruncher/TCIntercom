@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 import requests
 from bs4 import BeautifulSoup
 
-from .settings import Settings
+from tcsupport.app.settings import Settings
 
 session = requests.session()
 

@@ -4,15 +4,15 @@ install:
 
 .PHONY: test
 test:
-	pytest --cov=tcintercom
+	pytest --cov=tcsupport
 
 .PHONY: format
 format:
-	isort -rc -w 120 tcintercom
+	isort -rc -w 120 tcsupport
 	isort -rc -w 120 tests
-	black -S -l 120 --target-version py38 tcintercom tests
+	black -S -l 120 --target-version py38 tcsupport tests
 
 .PHONY: lint
 lint:
-	flake8 tests/ tcintercom/
+	flake8 tests/ tcsupport/
 

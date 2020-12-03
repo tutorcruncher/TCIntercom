@@ -7,7 +7,7 @@ import requests
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from .settings import Settings
+from tcsupport.app.settings import Settings
 
 session = requests.Session()
 logger = logging.getLogger('tc-intercom.views')
@@ -40,7 +40,9 @@ async def github_request(url: str, data: dict):
     if conf.gh_token:
         headers = {'Authorization': 'Bearer ' + conf.gh_token}
         r = session.post(
-            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url, json=data, headers=headers,
+            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url,
+            json=data,
+            headers=headers,
         )
         r.raise_for_status()
         return r.json()
