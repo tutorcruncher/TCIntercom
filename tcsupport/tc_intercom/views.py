@@ -4,23 +4,16 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
+from github import Github
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from tcsupport.app.settings import Settings
 
 session = requests.Session()
-logger = logging.getLogger('tc-intercom.views')
+logger = logging.getLogger('tc-support.tc-intercom.views')
 
 conf = Settings()
-
-
-async def index(request: Request):
-    return Response("TutorCruncher's service for managing Intercom is Online")
-
-
-async def raise_error(request: Request):
-    raise RuntimeError('Purposeful error')
 
 
 async def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
@@ -32,18 +25,6 @@ async def intercom_request(url: str, data: Optional[dict] = None, method: str = 
     }
     if not (method == 'POST' and not conf.ic_token):
         r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
-        r.raise_for_status()
-        return r.json()
-
-
-async def github_request(url: str, data: dict):
-    if conf.gh_token:
-        headers = {'Authorization': 'Bearer ' + conf.gh_token}
-        r = session.post(
-            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url,
-            json=data,
-            headers=headers,
-        )
         r.raise_for_status()
         return r.json()
 
@@ -91,13 +72,13 @@ async def check_support_reply(item: dict):
         return 'Company has support'
 
 
-async def create_issue(part, tags):
-    data = {
-        'title': 'From IC: ' + ','.join(tags),
-        'body': '**Created from intercom**\n\n' + part['body'],
-        'labels': tags,
-    }
-    await github_request('/issues', data)
+async def create_intercom_issue(part, tags):
+    gh = Github(conf.gh_token)
+    tc_repo = gh.get_repo('tutorcruncher/tutorcruncher.com')
+    title = 'From IC: ' + ','.join(tags)
+    body = '**Created from intercom**\n\n' + part['body']
+    labels = tags
+    tc_repo.create_issue(title=title, body=body, labels=labels)
 
 
 async def snooze_conv_for_close(conv):
@@ -114,7 +95,7 @@ async def snooze_conv_for_close(conv):
 async def check_message_tags(item: dict):
     tags = [t['name'] for t in item['tags_added']['tags']]
     if any(t in ['New help article', 'Update help article'] for t in tags):
-        await create_issue(item['conversation_parts']['conversation_parts'][0], tags)
+        await create_intercom_issue(item['conversation_parts']['conversation_parts'][0], tags)
         return 'Issue created with tags'
     if 'Snooze then close' in tags:
         await snooze_conv_for_close(item)

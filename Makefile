@@ -8,8 +8,8 @@ test:
 
 .PHONY: format
 format:
-	isort -rc -w 120 tcsupport
-	isort -rc -w 120 tests
+	isort -w 120 tcsupport
+	isort -w 120 tests
 	black -S -l 120 --target-version py38 tcsupport tests
 
 .PHONY: lint

@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+from unittest import mock
 
 from requests import RequestException
 
 from tcsupport.tc_intercom.views import session
+from tests.mock_github import create_fake_github
 
 
 def test_index(client):
@@ -105,7 +107,9 @@ def test_conv_created_has_support(monkeypatch, client):
     assert r.json() == {'message': 'Company has support'}
 
 
-def test_message_tagged_new_article(client):
+@mock.patch('tcsupport.tc_intercom.views.Github')
+def test_message_tagged_new_article(mock_github, client):
+    mock_github.return_value = create_fake_github('tutorcruncher/tutorcruncher.com')
     ic_data = {
         'topic': 'conversation_part.tag.created',
         'data': {

@@ -7,7 +7,9 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from tcsupport.app.settings import Settings
-from tcsupport.tc_intercom.views import callback, deploy_hook, index, raise_error
+from tcsupport.app.views import index, raise_error
+from tcsupport.help_feedback.views import submit_feedback
+from tcsupport.tc_intercom.views import callback, deploy_hook
 
 
 async def lifespan(app):
@@ -21,9 +23,10 @@ def create_app():
         debug=bool(os.getenv('DEBUG')),
         routes=[
             Route('/', index),
+            Route('/error/', raise_error),
             Route('/callback/', callback, methods=['POST']),
             Route('/deploy-hook/', deploy_hook),
-            Route('/error/', raise_error),
+            Route('/submit-feedback/', submit_feedback, methods=['POST']),
         ],
         lifespan=lifespan,
     )

@@ -5,3 +5,4 @@ sentry_sdk==0.19.1
 beautifulsoup4==4.9.2
 pydantic==1.6.1
 arq==0.19
+Pygithub==1.54

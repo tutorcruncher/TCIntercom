@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     kare_secret: str = ''
     kare_url: str = 'https://api.eu.karehq.com'
     redis_url: str = 'redis://localhost:6379'
-    tc_url: str = 'http://tutorcruncher.com'
+    tc_url: str = 'https://tutorcruncher.com'
 
     @property
     def redis_settings(self):

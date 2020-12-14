@@ -11,7 +11,7 @@ from tcsupport.app.main import create_app
 from tcsupport.app.settings import Settings
 from tcsupport.app.worker import WorkerSettings
 
-logger = logging.getLogger('tc-intercom.run')
+logger = logging.getLogger('tc-support.run')
 
 
 @click.group()

@@ -3,7 +3,7 @@ import copy
 import re
 
 from tcsupport.app.settings import Settings
-from tcsupport.app.worker import check_kare_data, session
+from tcsupport.tc_intercom.kare import check_kare_data, session
 
 FOO_CONTENT = (
     '<html><body>'
