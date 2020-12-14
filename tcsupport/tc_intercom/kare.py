@@ -95,8 +95,8 @@ class KareClient:
             if not (url := node['content'].get('url')):
                 continue
             kare_content = self._get_node_content(node_id)
-            tc_content = tc_data.pop(url)
-            if kare_content != tc_content:
+            tc_content = tc_data.pop(url, None)
+            if tc_content and kare_content != tc_content:
                 logger.info('Updating node %s for url %s', node_id, url)
                 self._upload_node_content(node_id, tc_content['content'])
         # Then we need to add the new items that are in the help site but not in Kare

@@ -25,8 +25,10 @@ def create_app():
             Route('/', index),
             Route('/error/', raise_error),
             Route('/callback/', callback, methods=['POST']),
-            Route('/deploy-hook/', deploy_hook),
+            Route('/deploy-hook/', deploy_hook, methods=['GET', 'POST']),
             Route('/submit-feedback/', submit_feedback, methods=['POST']),
+            Route('/deploy-hook/', deploy_hook, methods=['GET', 'POST']),
+            Route('/error/', raise_error),
         ],
         lifespan=lifespan,
     )
