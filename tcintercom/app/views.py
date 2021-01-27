@@ -40,7 +40,9 @@ async def github_request(url: str, data: dict):
     if conf.gh_token:
         headers = {'Authorization': 'Bearer ' + conf.gh_token}
         r = session.post(
-            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url, json=data, headers=headers,
+            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url,
+            json=data,
+            headers=headers,
         )
         r.raise_for_status()
         return r.json()
@@ -155,8 +157,3 @@ async def callback(request: Request):
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
-
-
-async def deploy_hook(request: Request):
-    await request.app.redis.enqueue_job('check_kare_data')
-    return Response('OK')
