@@ -121,7 +121,7 @@ def build_section(name, parent_id):
 
 
 def build_data(all_data, collections):
-    collection_data = build_collections(collections)
+    # collection_data = build_collections(collections)
 
     with open(all_data) as read_file:
         data = json.load(read_file)
@@ -139,7 +139,7 @@ def build_data(all_data, collections):
         parent_id = sections_data[section_split[0]]
 
         j['parent_id'] = parent_id
-        build_article(j)
+        # build_article(j)
 
 
 def build_article(data):
@@ -192,6 +192,7 @@ def print_pages():
         headers=intercom_headers,
     )
     x = r.json()
+    print(x)
     count = 1
     while count != x['pages']['total_pages']:
         r = session.get(x['pages']['next'], headers=intercom_headers)
@@ -200,22 +201,63 @@ def print_pages():
         count += 1
 
 
+def format_name_url(name):
+    name = name.replace(' ', '-')
+    name = name.lower()
+    return name
+
+
 def get_article_urls():
     r = session.get(
         'https://api.intercom.io/articles',
         headers=intercom_headers,
     )
     x = r.json()
-    count = 0
+    base_url = "https://intercom.help/tutorcruncher/"
+    # print(base_url)
     urls = {}
+    for i in x['data']:
+        lowered_title = format_name_url(i['title'])
+        urls[i['title']] = {'new_url': f"{base_url}en/articles/{i['id']}-{lowered_title}"}
+    # print(urls[i['title']])
+    count = 1
     while count != x['pages']['total_pages']:
-        count += 1
+        r = session.get(x['pages']['next'], headers=intercom_headers)
+        x = r.json()
         for i in x['data']:
-            urls[i['title']] = f"https://app.intercom.com/a/apps/u6r3i73k/articles/articles/{i['id']}/show"
-            print(urls[i['title']])
-        if count != x['pages']['total_pages']:
-            r = session.get(x['pages']['next'], headers=intercom_headers)
-            x = r.json()
+            lowered_title = format_name_url(i['title'])
+            urls[i['title']] = {'new_url': f"{base_url}en/articles/{i['id']}-{lowered_title}"}
+        # print(urls[i['title']])
+        count += 1
+    merge_article_urls(urls)
+
+
+def get_collection_urls():
+    r = session.get('https://api.intercom.io/help_center/collections', headers=intercom_headers)
+    x = r.json()
+    base_url = "https://intercom.help/tutorcruncher/"
+    collection_urls = {}
+    count = 1
+    for i in x['data']:
+        lowered_name = format_name_url(i['name'])
+        collection_urls[i['name']] = f"{base_url}en/collections/{i['id']}-{lowered_name}"
+    while count != x['pages']['total_pages']:
+        r = session.get(x['pages']['next'], headers=intercom_headers)
+        x = r.json()
+        for i in x['data']:
+            lowered_name = format_name_url(i['name'])
+            collection_urls[i['name']] = f"{base_url}en/collections/{i['id']}-{lowered_name}"
+        count += 1
+    print(collection_urls)
+
+
+def merge_article_urls(urls):
+    with open('helpdocs/wholeProf.json') as read_file:
+        data = json.load(read_file)
+    for i, j in data.items():
+        if j['title'] in urls.keys():
+            urls[j['title']]['old_url'] = i
+            print(urls[j['title']]['old_url'] + '     ' + urls[j['title']]['new_url'])
 
 
 # The following pages error because of nested lists but have worked around
@@ -226,10 +268,12 @@ def get_article_urls():
 # Most commonly 'Client Pipeline'
 
 if __name__ == '__main__':
-    get_article_urls()
-# tc_data = build_tc_knowledge()            # Gets data from TC help doc pages
-# build_data(tc_data, online_collections)   # Starts a run of all data and pre-defined collections
-# print(list_of_pages_of_error)             # Prints pages that errored
-# single_article('29.json', 2740108)        # Used for posting single pages from file and parent_id
-# get_pages_object()                        # Prints all sections to console, section
-# id is needed as parent_id for articles
+    get_collection_urls()
+    # get_article_urls()
+    # print_pages()
+    # tc_data = build_tc_knowledge()            # Gets data from TC help doc pages
+    # build_data(tc_data, online_collections)   # Starts a run of all data and pre-defined collections
+    # print(list_of_pages_of_error)             # Prints pages that errored
+    # single_article('29.json', 2740108)        # Used for posting single pages from file and parent_id
+    # get_pages_object()                        # Prints all sections to console, section
+    # id is needed as parent_id for articles
