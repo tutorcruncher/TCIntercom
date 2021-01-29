@@ -12,9 +12,15 @@ logger = logging.getLogger('tc-intercom.worker')
 EXCLUDED_HELP_PAGES = ['/api/', '/tutors/', '/help-videos/', '/pdf-guides/']
 
 auth_key = os.getenv('TC_TEST_KEY')
+live_auth_key = os.getenv('LIVE_TC_KEY')
 
 intercom_headers = {
     'Authorization': f'Bearer {auth_key}',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+}
+live_intercom_headers = {
+    'Authorization': f'Bearer {live_auth_key}',
     'Accept': 'application/json',
     'Content-Type': 'application/json',
 }
@@ -166,16 +172,26 @@ def build_article(data):
 def remove_articles():
     r = session.get(
         'https://api.intercom.io/articles',
-        headers=intercom_headers,
+        headers=live_intercom_headers,
     )
     x = r.json()
-    while x['total_count'] > 0:
+    for item in x['data']:
+        r = session.delete(
+            f"https://api.intercom.io/articles/{item['id']}",
+            headers=live_intercom_headers,
+        )
+        r.raise_for_status()
+    count = 1
+    while count != x['pages']['total_pages']:
+        r = session.get(x['pages']['next'], headers=live_intercom_headers)
+        x = r.json()
         for item in x['data']:
             r = session.delete(
                 f"https://api.intercom.io/articles/{item['id']}",
-                headers=intercom_headers,
+                headers=live_intercom_headers,
             )
             r.raise_for_status()
+        count += 1
 
 
 def single_article(file, parent_id):
@@ -191,10 +207,12 @@ def print_pages():
         headers=intercom_headers,
     )
     x = r.json()
+    print(x)
     count = 1
     while count != x['pages']['total_pages']:
         r = session.get(x['pages']['next'], headers=intercom_headers)
         x = r.json()
+        print(x)
         count += 1
 
 
@@ -256,6 +274,114 @@ def merge_article_urls(urls):
     f.close()
 
 
+def help_collections_live():
+    r = session.get('https://api.intercom.io/help_center/collections', headers=intercom_headers)
+    x = r.json()
+    new_collection_ids = {}
+    for item in x['data']:
+        r = session.post(
+            'https://api.intercom.io/help_center/collections',
+            json={
+                'name': item['name'],
+                'description': item['description'],
+                'icon': item['icon'],
+                'order': item['order'],
+            },
+            headers=live_intercom_headers,
+        )
+        y = r.json()
+        new_collection_ids[item['id']] = y['id']
+    return new_collection_ids
+
+
+def help_sections_live(new_collection_ids):
+    r = session.get('https://api.intercom.io/help_center/sections', headers=intercom_headers)
+    x = r.json()
+    new_section_ids = {}
+    for item in x['data']:
+        temp_id = str(item['parent_id'])
+        if temp_id in new_collection_ids.keys():
+            parent_id = new_collection_ids[temp_id]
+            r = session.post(
+                'https://api.intercom.io/help_center/sections',
+                json={'name': item['name'], 'parent_id': parent_id, 'order': item['order']},
+                headers=live_intercom_headers,
+            )
+            y = r.json()
+            new_section_ids[item['id']] = y['id']
+
+    r = session.get(x['pages']['next'], headers=intercom_headers)
+    x = r.json()
+    for item in x['data']:
+        temp_id = str(item['parent_id'])
+        if temp_id in new_collection_ids.keys():
+            parent_id = new_collection_ids[temp_id]
+            r = session.post(
+                'https://api.intercom.io/help_center/sections',
+                json={'name': item['name'], 'parent_id': parent_id, 'order': item['order']},
+                headers=live_intercom_headers,
+            )
+            y = r.json()
+            new_section_ids[item['id']] = y['id']
+    return new_section_ids
+
+
+def help_docs_live():
+    new_collection_ids = help_collections_live()
+    new_section_ids = help_sections_live(new_collection_ids)
+
+    r = session.get('https://api.intercom.io/articles', headers=intercom_headers)
+    x = r.json()
+    for item in x['data']:
+        temp_id = str(item['parent_id'])
+        if temp_id in new_section_ids.keys():
+            parent_id = new_section_ids[temp_id]
+        if temp_id in new_collection_ids.keys():
+            parent_id = new_collection_ids[temp_id]
+        description = ''
+        if temp_id in ['2743038', '2743053', '2743054']:
+            description = item['description']
+        r = session.post(
+            'https://api.intercom.io/articles',
+            json={
+                'title': item['title'],
+                'description': description,
+                'author_id': 4241273,
+                'parent_id': parent_id,
+                'parent_type': item['parent_type'],
+                'body': item['body'],
+                'state': 'published',
+            },
+            headers=live_intercom_headers,
+        )
+    count = 1
+    while count != x['pages']['total_pages']:
+        r = session.get(x['pages']['next'], headers=intercom_headers)
+        x = r.json()
+        for item in x['data']:
+            temp_id = str(item['parent_id'])
+            if temp_id in new_section_ids.keys():
+                parent_id = new_section_ids[temp_id]
+            if temp_id in new_collection_ids.keys():
+                parent_id = new_collection_ids[temp_id]
+            description = ''
+            if temp_id in ['2743038', '2743053', '2743054']:
+                description = item['description']
+            r = session.post(
+                'https://api.intercom.io/articles',
+                json={
+                    'title': item['title'],
+                    'description': description,
+                    'author_id': 4241273,
+                    'parent_id': parent_id,
+                    'parent_type': item['parent_type'],
+                    'body': item['body'],
+                    'state': 'published',
+                },
+                headers=live_intercom_headers,
+            )
+        count += 1
+
+
 if __name__ == '__main__':
-    get_collection_urls()
-    get_article_urls()
+    help_docs_live()
