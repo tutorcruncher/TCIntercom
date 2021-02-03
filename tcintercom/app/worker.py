@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -218,7 +217,7 @@ def print_pages():
 
 
 def format_name_url(name):
-    name = name.translate({ord(c): " " for c in "!@#$£%^&*()[]{};:,./<>?\|`~=_+"})
+    name = name.translate({ord(c): " " for c in "!@#$£%^&*()[]{};:,./<>?|`~=_+"})
     name = name.replace(' ', '-')
     name = name.lower()
     if name.endswith('-'):
@@ -338,7 +337,8 @@ old_collection_urls = {
     'Website': '/tutoring-online/help/',
 }
 extra_urls = {
-    '/getting-paid/help/paying-out-to-tutors/what-are-automated-payouts-with-telleroo/': 'https://help.tutorcruncher.com/',
+    '/getting-paid/help/paying-out-to-tutors/what-are-automated-payouts-with-telleroo/': 'https://help.tutorcruncher.'
+    'com/',
     '/help': 'https://help.tutorcruncher.com/',
     '/help/': 'https://help.tutorcruncher.com/',
     '/help/help-videos/': 'https://help.tutorcruncher.com/en/collections/2743038-help-tutorials',
