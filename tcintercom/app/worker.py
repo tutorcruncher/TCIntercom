@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -217,61 +218,172 @@ def print_pages():
 
 
 def format_name_url(name):
+    name = name.translate({ord(c): " " for c in "!@#$£%^&*()[]{};:,./<>?\|`~=_+"})
     name = name.replace(' ', '-')
     name = name.lower()
-    return name
+    if name.endswith('-'):
+        return name[:-1]
+    else:
+        return name
 
 
 def get_article_urls():
     r = session.get(
         'https://api.intercom.io/articles',
-        headers=intercom_headers,
+        headers=live_intercom_headers,
     )
     x = r.json()
-    base_url = "https://intercom.help/tutorcruncher/"
+    base_url = "https://help.tutorcruncher.com/"
     urls = {}
     for i in x['data']:
         lowered_title = format_name_url(i['title'])
         urls[i['title']] = {'new_url': f"{base_url}en/articles/{i['id']}-{lowered_title}"}
     count = 1
     while count != x['pages']['total_pages']:
-        r = session.get(x['pages']['next'], headers=intercom_headers)
+        r = session.get(x['pages']['next'], headers=live_intercom_headers)
         x = r.json()
         for i in x['data']:
             lowered_title = format_name_url(i['title'])
             urls[i['title']] = {'new_url': f"{base_url}en/articles/{i['id']}-{lowered_title}"}
         count += 1
-    merge_article_urls(urls)
+    return urls
+
+
+def get_section_urls():
+    r = session.get('https://api.intercom.io/help_center/sections', headers=live_intercom_headers)
+    x = r.json()
+    base_url = "https://help.tutorcruncher.com/"
+    section_urls = {}
+    count = 1
+    for i in x['data']:
+        lowered_name = format_name_url(i['name'])
+        r = session.get(
+            f"https://api.intercom.io/help_center/collections/{i['parent_id']}", headers=live_intercom_headers
+        )
+        y = r.json()
+        lowered_parent_title = format_name_url(y['name'])
+        section_urls[i['name']] = f"{base_url}en/collections/{i['parent_id']}-{lowered_parent_title}#{lowered_name}"
+    while count != x['pages']['total_pages']:
+        r = session.get(x['pages']['next'], headers=live_intercom_headers)
+        x = r.json()
+        for i in x['data']:
+            lowered_name = format_name_url(i['name'])
+            r = session.get(
+                f"https://api.intercom.io/help_center/collections/{i['parent_id']}", headers=live_intercom_headers
+            )
+            y = r.json()
+            lowered_parent_title = format_name_url(y['name'])
+            section_urls[i['name']] = f"{base_url}en/collections/{i['parent_id']}-{lowered_parent_title}#{lowered_name}"
+        count += 1
+    return section_urls
 
 
 def get_collection_urls():
-    r = session.get('https://api.intercom.io/help_center/collections', headers=intercom_headers)
+    r = session.get('https://api.intercom.io/help_center/collections', headers=live_intercom_headers)
     x = r.json()
-    base_url = "https://intercom.help/tutorcruncher/"
+    base_url = "https://help.tutorcruncher.com/"
     collection_urls = {}
     count = 1
     for i in x['data']:
         lowered_name = format_name_url(i['name'])
         collection_urls[i['name']] = f"{base_url}en/collections/{i['id']}-{lowered_name}"
     while count != x['pages']['total_pages']:
-        r = session.get(x['pages']['next'], headers=intercom_headers)
+        r = session.get(x['pages']['next'], headers=live_intercom_headers)
         x = r.json()
         for i in x['data']:
             lowered_name = format_name_url(i['name'])
             collection_urls[i['name']] = f"{base_url}en/collections/{i['id']}-{lowered_name}"
         count += 1
+    return collection_urls
 
 
-def merge_article_urls(urls):
+old_section_urls = {
+    'Brand Management': '/business-growth/help/brand-management/',
+    'Email': '/business-growth/help/email/',
+    'Find A Tutor': '/business-growth/help/find-a-tutor/',
+    'Sms': '/business-growth/help/sms/',
+    'System Customisation': '/business-growth/help/system-customisation/',
+    'Administrator': '/crm/help/administrator/',
+    'Affiliate': '/crm/help/affiliate/',
+    'Client': '/crm/help/client/',
+    'General': '/crm/help/general/',
+    'Student': '/crm/help/student/',
+    'Tutor': '/crm/help/tutor/',
+    'Accounting Setup And Autocharge': '/getting-paid/help/accounting-setup-and-autocharge/',
+    'Ad Hoc Charges': '/getting-paid/help/ad-hoc-charges/',
+    'Client Balances': '/getting-paid/help/client-balances/',
+    'Direct Debit': '/getting-paid/help/direct-debit/',
+    'Invoicing': '/getting-paid/help/invoicing/',
+    'Paying Out To Tutors': '/getting-paid/help/paying-out-to-tutors/',
+    'Payment In Advance': '/getting-paid/help/payment-in-advance/',
+    'Quick Payments': '/getting-paid/help/quick-payments/',
+    'Taking Debit And Credit Card Payments': '/getting-paid/help/taking-debit-and-credit-card-payments/',
+    'Tutorcruncher Fees And Charges': '/getting-paid/help/tutorcruncher-fees-and-charges/',
+    'Calendar': '/tutor-management-software/help/calendar/',
+    'Jobs': '/tutor-management-software/help/jobs/',
+    'Labels': '/tutor-management-software/help/labels/',
+    'Lessons': '/tutor-management-software/help/lessons/',
+    'Tutorcruncher Video': '/tutor-management-software/help/tutorcruncher-video/',
+    'Whiteboard Integration': '/tutor-management-software/help/whiteboard-integration/',
+    'Advanced Website Integration With Socket': '/tutoring-online/help/advanced-website-integration-with-socket/',
+    'Domain Masking': '/tutoring-online/help/domain-masking/',
+    'Website Integration': '/tutoring-online/help/linking-my-website-with-tutorcruncher/',
+    'Outside Integrations': '/tutoring-online/help/outside-integrations/',
+}
+old_collection_urls = {
+    'Users': '/crm/help/',
+    'Scheduling': '/tutor-management-software/help/',
+    'Marketing': '/business-growth/help/',
+    'Payments': '/getting-paid/help/',
+    'Website': '/tutoring-online/help/',
+}
+extra_urls = {
+    '/getting-paid/help/paying-out-to-tutors/what-are-automated-payouts-with-telleroo/': 'https://help.tutorcruncher.com/',
+    '/help': 'https://help.tutorcruncher.com/',
+    '/help/': 'https://help.tutorcruncher.com/',
+    '/help/help-videos/': 'https://help.tutorcruncher.com/en/collections/2743038-help-tutorials',
+    '/help/pdf-guides/': 'https://help.tutorcruncher.com/en/articles/4838197-beginner-user-guides',
+    '/help/tutors/': 'https://help.tutorcruncher.com/en/articles/4838317-tutors-guide',
+    '/help/api/': 'https://help.tutorcruncher.com/en/articles/4843200-api-documentation',
+}
+
+
+def collect_urls():
+    article_urls = get_article_urls()
+    section_urls = get_section_urls()
+    collection_urls = get_collection_urls()
+
     with open('helpdocs/wholeProf.json') as read_file:
         data = json.load(read_file)
+
     f = open("helpdocs/redirect_articles.txt", 'w+')
+
+    new_json_dump = {}
+
+    for i, j in extra_urls.items():
+        f.write(i + '        ' + j + '\n')
+        new_json_dump[i] = j
+
+    for i in old_collection_urls.keys():
+        if i in collection_urls.keys():
+            f.write(old_collection_urls[i] + '        ' + collection_urls[i] + '\n')
+            new_json_dump[old_collection_urls[i]] = collection_urls[i]
+
+    for i in old_section_urls.keys():
+        if i in section_urls.keys():
+            f.write(old_section_urls[i] + '        ' + section_urls[i] + '\n')
+            new_json_dump[old_section_urls[i]] = section_urls[i]
+
     for i, j in data.items():
-        if j['title'] in urls.keys():
+        if j['title'] in article_urls.keys():
             cut_url = i.replace('https://tutorcruncher.com', '')
-            urls[j['title']]['old_url'] = cut_url
-            f.write(urls[j['title']]['old_url'] + '       ' + urls[j['title']]['new_url'] + '\n')
+            article_urls[j['title']]['old_url'] = cut_url
+            f.write(article_urls[j['title']]['old_url'] + '        ' + article_urls[j['title']]['new_url'] + '\n')
+            new_json_dump[article_urls[j['title']]['old_url']] = article_urls[j['title']]['new_url']
     f.close()
+
+    with open('helpdocs/helpdoc_redirects.json', 'w') as outfile:
+        json.dump(new_json_dump, outfile, indent=2)
 
 
 def help_collections_live():
@@ -384,4 +496,4 @@ def help_docs_live():
 
 
 if __name__ == '__main__':
-    help_docs_live()
+    collect_urls()
