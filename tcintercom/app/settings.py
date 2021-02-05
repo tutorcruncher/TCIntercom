@@ -8,9 +8,6 @@ class Settings(BaseSettings):
     gh_token: str = ''
     ic_token: str = ''
     ic_bot_id: int = 2693259
-    kare_id: str = ''
-    kare_secret: str = ''
-    kare_url: str = 'https://api.eu.karehq.com'
     redis_url: str = 'redis://localhost:6379'
     tc_url: str = 'http://tutorcruncher.com'
 
@@ -25,8 +22,6 @@ class Settings(BaseSettings):
         fields = {
             'gh_token': {'env': 'GH_TOKEN'},
             'ic_token': {'env': 'IC_TOKEN'},
-            'kare_secret': {'env': 'KARE_SECRET'},
-            'kare_id': {'env': 'KARE_ID'},
             'redis_url': {'env': 'REDIS_URL'},
             'ic_bot_id': {'env': 'IC_BOT_ID'},
         }
