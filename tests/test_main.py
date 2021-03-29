@@ -66,8 +66,6 @@ def get_mock_response(test, error=False):
                 }
             elif test in return_dict:
                 return return_dict[test]
-            else:
-                return 'check failure'
 
         def raise_for_status(self):
             if error:
@@ -224,7 +222,6 @@ def test_new_user_no_dupe_email(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Email is not a duplicate.'}
-    assert 1 == 2
 
 
 def test_new_user_no_email(client):
@@ -245,4 +242,3 @@ def test_new_user_dupe_email(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Email is a duplicate.'}
-    assert 1 == 2
