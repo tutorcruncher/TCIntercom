@@ -142,11 +142,9 @@ async def check_unsnoozed_conv(item: dict):
 
 
 async def check_email_exists(item: dict):
-    new_user_email = item['email']
-    if new_user_email:
+    if new_user_email := item['email']:
         data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
-        existing_user_data = await intercom_request(f'/contacts/search', method='POST', data=data)
-        if existing_user_data:
+        if await intercom_request('/contacts/search', method='POST', data=data):
             update_new_user = {
                 'role': 'user',
                 'email': item['email'],
