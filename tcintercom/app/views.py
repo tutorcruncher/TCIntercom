@@ -145,7 +145,8 @@ async def check_email_exists(item: dict):
     if new_user_email := item['email']:
         data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
         existing_data = await intercom_request('/contacts/search', method='POST', data=data)
-        if existing_data['total_count'] > 0:
+        print(existing_data)
+        if existing_data.get('total_count') > 0:
             update_new_user = {
                 'role': 'user',
                 'email': item['email'],

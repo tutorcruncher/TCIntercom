@@ -28,9 +28,7 @@ def get_mock_response(test, error=False):
 
         def json(self):
             now = datetime.now()
-            if test == 'no_companies':
-                return {'companies': {'type': 'list', 'data': []}}
-            elif test == 'no_support':
+            if test == 'no_support':
                 if 'contacts/' in self.url:
                     return {
                         'companies': {
@@ -66,22 +64,29 @@ def get_mock_response(test, error=False):
                         'last_admin_reply_at': round((now - timedelta(days=9)).timestamp()),
                     },
                 }
-            elif test == 'no_dupe_email':
-                return {
-                    'item': {'role': 'user', 'id': 123, 'email': 'test1@test', 'custom_attributes': {}},
-                    'total_count': 0,
-                }
-            elif test == 'dupe_email':
-                return {
-                    'item': {'role': 'user', 'id': 123, 'email': 'test@test', 'custom_attributes': {}},
-                    'total_count': 1,
-                }
+            elif test in return_dict:
+                return return_dict[test]
+            else:
+                return 'check failure'
 
         def raise_for_status(self):
             if error:
                 raise RequestException('Bad request')
 
     return MockResponse
+
+
+return_dict = {
+    'no_dupe_email': {
+        'item': {'role': 'user', 'id': 123, 'email': 'test1@test', 'custom_attributes': {}},
+        'total_count': 0,
+    },
+    'dupe_email': {
+        'item': {'role': 'user', 'id': 123, 'email': 'test@test', 'custom_attributes': {}},
+        'total_count': 1,
+    },
+    'no_companies': {'companies': {'type': 'list', 'data': []}},
+}
 
 
 def test_conv_created_user_no_companies(monkeypatch, client):
@@ -219,6 +224,7 @@ def test_new_user_no_dupe_email(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Email is not a duplicate.'}
+    assert 1 == 2
 
 
 def test_new_user_no_email(client):
@@ -239,3 +245,4 @@ def test_new_user_dupe_email(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'Email is a duplicate.'}
+    assert 1 == 2
