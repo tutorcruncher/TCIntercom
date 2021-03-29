@@ -40,7 +40,9 @@ async def github_request(url: str, data: dict):
     if conf.gh_token:
         headers = {'Authorization': 'Bearer ' + conf.gh_token}
         r = session.post(
-            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url, json=data, headers=headers,
+            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url,
+            json=data,
+            headers=headers,
         )
         r.raise_for_status()
         return r.json()
@@ -139,6 +141,28 @@ async def check_unsnoozed_conv(item: dict):
             return 'Conversation closed because of inactivity'
 
 
+async def check_email_exists(item: dict):
+    new_user_email = item['email']
+    if new_user_email:
+        data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
+        existing_user_data = await intercom_request(f'/contacts/search', method='POST', data=data)
+        if existing_user_data:
+            update_new_user = {
+                'role': 'user',
+                'email': item['email'],
+                'custom_attributes': item['custom_attributes'],
+            }
+            update_new_user['custom_attributes']['is_duplicate'] = True
+
+            msg = "Email is a duplicate."
+            await intercom_request(f'/contacts/{item["id"]}', method='PUT', data=update_new_user)
+        else:
+            msg = "Email is not a duplicate."
+    else:
+        msg = "No email provided."
+    return msg
+
+
 async def callback(request: Request):
     try:
         data = json.loads(await request.body())
@@ -153,6 +177,8 @@ async def callback(request: Request):
         msg = await check_message_tags(item_data) or msg
     elif topic == 'conversation.admin.unsnoozed':
         msg = await check_unsnoozed_conv(item_data) or msg
+    elif topic == ('user.created' or 'contact.created'):
+        msg = await check_email_exists(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
 
