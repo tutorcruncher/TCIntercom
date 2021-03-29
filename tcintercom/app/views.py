@@ -144,7 +144,8 @@ async def check_unsnoozed_conv(item: dict):
 async def check_email_exists(item: dict):
     if new_user_email := item['email']:
         data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
-        if await intercom_request('/contacts/search', method='POST', data=data):
+        existing_data = await intercom_request('/contacts/search', method='POST', data=data)
+        if existing_data['total_count'] > 0:
             update_new_user = {
                 'role': 'user',
                 'email': item['email'],
@@ -152,12 +153,12 @@ async def check_email_exists(item: dict):
             }
             update_new_user['custom_attributes']['is_duplicate'] = True
 
-            msg = "Email is a duplicate."
+            msg = 'Email is a duplicate.'
             await intercom_request(f'/contacts/{item["id"]}', method='PUT', data=update_new_user)
         else:
-            msg = "Email is not a duplicate."
+            msg = 'Email is not a duplicate.'
     else:
-        msg = "No email provided."
+        msg = 'No email provided.'
     return msg
 
 
