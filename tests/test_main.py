@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from requests import RequestException
 
-from tcintercom.app.views import session
+from tcintercom.app.views import conf, session
 
 
 def test_index(client):
@@ -214,6 +214,7 @@ def test_message_unsnooze_dont_close(monkeypatch, client):
 
 
 def test_new_user_no_dupe_email(monkeypatch, client):
+    monkeypatch.setattr(conf, 'ic_token', 'foobar')
     monkeypatch.setattr(session, 'request', get_mock_response('no_dupe_email'))
 
     ic_data = {
@@ -234,6 +235,7 @@ def test_new_user_no_email(client):
 
 
 def test_new_user_dupe_email(monkeypatch, client):
+    monkeypatch.setattr(conf, 'ic_token', 'foobar')
     monkeypatch.setattr(session, 'request', get_mock_response('dupe_email'))
 
     ic_data = {
