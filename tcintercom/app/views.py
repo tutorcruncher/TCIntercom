@@ -146,15 +146,27 @@ async def check_email_exists(item: dict):
         data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
         existing_data = await intercom_request('/contacts/search', method='POST', data=data)
         if existing_data.get('total_count') > 0:
-            update_new_user = {
-                'role': 'user',
+            for contact in existing_data['data']:
+
+                update_existing_contact = {
+                    'role': contact['role'],
+                    'email': contact['email'],
+                    'custom_attributes': contact['custom_attributes'],
+                }
+                # no point updating an already marked contact
+                if contact['id'] != item['id'] and not contact['custom_attributes'].get('is_duplicate'):
+                    update_existing_contact['custom_attributes']['is_duplicate'] = True
+                    await intercom_request(f'/contacts/{contact["id"]}', method='PUT', data=update_existing_contact)
+
+            # sometimes new contact isnt included in existing conatacts
+            update_existing_contact = {
+                'role': item['type'],
                 'email': item['email'],
                 'custom_attributes': item['custom_attributes'],
             }
-            update_new_user['custom_attributes']['is_duplicate'] = True
-
+            update_existing_contact['custom_attributes']['is_duplicate'] = False
+            await intercom_request(f'/contacts/{item["id"]}', method='PUT', data=update_existing_contact)
             msg = 'Email is a duplicate.'
-            await intercom_request(f'/contacts/{item["id"]}', method='PUT', data=update_new_user)
         else:
             msg = 'Email is not a duplicate.'
     else:
