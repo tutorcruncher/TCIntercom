@@ -82,6 +82,10 @@ return_dict = {
         'data': [{'role': 'user', 'id': 122, 'email': 'test@test', 'custom_attributes': {}}],
         'total_count': 1,
     },
+    'dupe_email_already_true': {
+        'data': [{'role': 'user', 'id': 122, 'email': 'test@test', 'custom_attributes': {'is_duplicate': True}}],
+        'total_count': 1,
+    },
     'no_companies': {'companies': {'type': 'list', 'data': []}},
 }
 
@@ -236,6 +240,18 @@ def test_new_user_no_email(client):
 def test_new_user_dupe_email(monkeypatch, client):
     monkeypatch.setattr(conf, 'ic_token', 'foobar')
     monkeypatch.setattr(session, 'request', get_mock_response('dupe_email'))
+
+    ic_data = {
+        'topic': 'user.created',
+        'data': {'item': {'type': 'user', 'id': 123, 'email': 'test@test', 'custom_attributes': {}}},
+    }
+    r = client.post('/callback/', json=ic_data)
+    assert r.json() == {'message': 'Email is a duplicate.'}
+
+
+def test_new_user_dupe_email_already_true(monkeypatch, client):
+    monkeypatch.setattr(conf, 'ic_token', 'foobar')
+    monkeypatch.setattr(session, 'request', get_mock_response('dupe_email_already_true'))
 
     ic_data = {
         'topic': 'user.created',

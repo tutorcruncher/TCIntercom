@@ -153,11 +153,12 @@ async def check_email_exists(item: dict):
                     'email': contact['email'],
                     'custom_attributes': contact['custom_attributes'],
                 }
-                if contact['id'] != item['id']:
+                # no point updating an already marked contact
+                if contact['id'] != item['id'] and not contact['custom_attributes'].get('is_duplicate'):
                     update_existing_contact['custom_attributes']['is_duplicate'] = True
+                    await intercom_request(f'/contacts/{contact["id"]}', method='PUT', data=update_existing_contact)
 
-                await intercom_request(f'/contacts/{contact["id"]}', method='PUT', data=update_existing_contact)
-
+            # sometimes new contact isnt included in existing conatacts
             update_existing_contact = {
                 'role': item['type'],
                 'email': item['email'],
