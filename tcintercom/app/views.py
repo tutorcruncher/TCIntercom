@@ -141,37 +141,6 @@ async def check_unsnoozed_conv(item: dict):
             return 'Conversation closed because of inactivity'
 
 
-async def check_email_exists(item: dict):
-    if new_user_email := item['email']:
-        data = {'query': {'field': 'email', 'operator': '~', 'value': new_user_email}}
-        existing_data = await intercom_request('/contacts/search', method='POST', data=data)
-        if existing_data.get('total_count') > 0:
-            for contact in existing_data['data']:
-
-                update_existing_contact = {
-                    'role': contact['role'],
-                    'email': contact['email'],
-                    'custom_attributes': contact['custom_attributes'],
-                }
-                if contact['id'] != item['id']:
-                    update_existing_contact['custom_attributes']['is_duplicate'] = True
-                    await intercom_request(f'/contacts/{contact["id"]}', method='PUT', data=update_existing_contact)
-
-            update_existing_contact = {
-                'role': item['type'],
-                'email': item['email'],
-                'custom_attributes': item['custom_attributes'],
-            }
-            update_existing_contact['custom_attributes']['is_duplicate'] = False
-            await intercom_request(f'/contacts/{item["id"]}', method='PUT', data=update_existing_contact)
-            msg = 'Email is a duplicate.'
-        else:
-            msg = 'Email is not a duplicate.'
-    else:
-        msg = 'No email provided.'
-    return msg
-
-
 async def callback(request: Request):
     try:
         data = json.loads(await request.body())
@@ -186,8 +155,6 @@ async def callback(request: Request):
         msg = await check_message_tags(item_data) or msg
     elif topic == 'conversation.admin.unsnoozed':
         msg = await check_unsnoozed_conv(item_data) or msg
-    elif topic == ('user.created' or 'contact.created'):
-        msg = await check_email_exists(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
 
