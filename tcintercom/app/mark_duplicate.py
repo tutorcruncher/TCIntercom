@@ -1,10 +1,10 @@
 import logging
-from typing import Optional
 import time
-import requests
-import schedule
+from typing import Optional
 
-from settings import Settings
+import requests
+
+from .settings import Settings
 
 session = requests.Session()
 logger = logging.getLogger('tc-intercom.views')
@@ -24,20 +24,11 @@ def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET')
         return r.json()
 
 
-def run():
+async def run(ctx):
     contacts = list_all_contacts()
     mark_duplicate, mark_not_dupe = get_relevant_accounts(contacts)
     update_intercom(mark_duplicate)
     mark_not_dupe_update_intercom(mark_not_dupe)
-    return 'success'
-
-
-def mark_not_dupe_update_intercom(mark_duplicate: list):
-    for contact in mark_duplicate:
-        if contact['custom_attributes'].get('is_duplicate') is not False:
-            url = f'/contacts/{contact["id"]}'
-            data = {'role': contact['role'], 'email': contact['email'], 'custom_attributes': {'is_duplicate': False}}
-            intercom_request(url, method='PUT', data=data)
 
 
 def list_all_contacts():
@@ -46,14 +37,11 @@ def list_all_contacts():
     # - 91 days
     active_time = int(time.time()) - 7862400
     # number seen in last 90 days/ 10
-    for i in range(1, response['pages']['total_pages']):
+    while not (response['data'][0].get('last_seen_at') and response['data'][0].get('last_seen_at') < active_time):
         response = intercom_request(
             f'/contacts?per_page=150&starting_after={response["pages"]["next"]["starting_after"]}'
         )
         contacts += response['data']
-
-        if response['data'][0].get('last_seen_at') and response['data'][0].get('last_seen_at') < active_time:
-            break
 
     return contacts
 
@@ -102,5 +90,9 @@ def update_intercom(mark_duplicate: list):
             intercom_request(url, method='PUT', data=data)
 
 
-if __name__ == '__main__':
-    schedule.every().friday.at("23:00").do(run())
+def mark_not_dupe_update_intercom(mark_duplicate: list):
+    for contact in mark_duplicate:
+        if contact['custom_attributes'].get('is_duplicate') is not False:
+            url = f'/contacts/{contact["id"]}'
+            data = {'role': contact['role'], 'email': contact['email'], 'custom_attributes': {'is_duplicate': False}}
+            intercom_request(url, method='PUT', data=data)

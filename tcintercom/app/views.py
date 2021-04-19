@@ -157,8 +157,3 @@ async def callback(request: Request):
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
     return JSONResponse({'message': msg})
-
-
-async def deploy_hook(request: Request):
-    await request.app.redis.enqueue_job('check_kare_data')
-    return Response('OK')

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from requests import RequestException
 
-from tcintercom.app.views import conf, session
+from tcintercom.app.views import session
 
 
 def test_index(client):
