@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from requests import RequestException
 
-from tcintercom.app.views import conf, session
+from tcintercom.app.views import session
 
 
 def test_index(client):
@@ -75,17 +75,6 @@ def get_mock_response(test, error=False):
 
 
 return_dict = {
-    'no_dupe_email': {
-        'total_count': 0,
-    },
-    'dupe_email': {
-        'data': [{'role': 'user', 'id': 122, 'email': 'test@test', 'custom_attributes': {}}],
-        'total_count': 1,
-    },
-    'dupe_email_already_true': {
-        'data': [{'role': 'user', 'id': 122, 'email': 'test@test', 'custom_attributes': {'is_duplicate': True}}],
-        'total_count': 1,
-    },
     'no_companies': {'companies': {'type': 'list', 'data': []}},
 }
 
@@ -214,48 +203,3 @@ def test_message_unsnooze_dont_close(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'No action required'}
-
-
-def test_new_user_no_dupe_email(monkeypatch, client):
-    monkeypatch.setattr(conf, 'ic_token', 'foobar')
-    monkeypatch.setattr(session, 'request', get_mock_response('no_dupe_email'))
-
-    ic_data = {
-        'topic': 'user.created',
-        'data': {'item': {'type': 'user', 'id': 1234, 'email': 'test2@test.com', 'custom_attributes': {}}},
-    }
-    r = client.post('/callback/', json=ic_data)
-    assert r.json() == {'message': 'Email is not a duplicate.'}
-
-
-def test_new_user_no_email(client):
-    ic_data = {
-        'topic': 'user.created',
-        'data': {'item': {'type': 'user', 'id': 123, 'email': None, 'custom_attributes': {}}},
-    }
-    r = client.post('/callback/', json=ic_data)
-    assert r.json() == {'message': 'No email provided.'}
-
-
-def test_new_user_dupe_email(monkeypatch, client):
-    monkeypatch.setattr(conf, 'ic_token', 'foobar')
-    monkeypatch.setattr(session, 'request', get_mock_response('dupe_email'))
-
-    ic_data = {
-        'topic': 'user.created',
-        'data': {'item': {'type': 'user', 'id': 123, 'email': 'test@test', 'custom_attributes': {}}},
-    }
-    r = client.post('/callback/', json=ic_data)
-    assert r.json() == {'message': 'Email is a duplicate.'}
-
-
-def test_new_user_dupe_email_already_true(monkeypatch, client):
-    monkeypatch.setattr(conf, 'ic_token', 'foobar')
-    monkeypatch.setattr(session, 'request', get_mock_response('dupe_email_already_true'))
-
-    ic_data = {
-        'topic': 'user.created',
-        'data': {'item': {'type': 'user', 'id': 123, 'email': 'test@test', 'custom_attributes': {}}},
-    }
-    r = client.post('/callback/', json=ic_data)
-    assert r.json() == {'message': 'Email is a duplicate.'}

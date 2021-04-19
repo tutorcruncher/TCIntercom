@@ -8,8 +8,8 @@ test:
 
 .PHONY: format
 format:
-	isort -rc -w 120 tcintercom
-	isort -rc -w 120 tests
+	isort -w 120 tcintercom
+	isort -w 120 tests
 	black -S -l 120 --target-version py38 tcintercom tests
 
 .PHONY: lint
