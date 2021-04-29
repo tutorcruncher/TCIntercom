@@ -1,0 +1,38 @@
+version: 2
+updates:
+- package-ecosystem: pip
+  directory: "/"
+  schedule:
+    interval: monthly
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: sentry-sdk
+    versions:
+    - 0.19.5
+    - 0.20.3
+  - dependency-name: pytest-cov
+    versions:
+    - 2.11.1
+  - dependency-name: pydantic
+    versions:
+    - 1.7.3
+    - "1.8"
+  - dependency-name: uvicorn
+    versions:
+    - 0.13.4
+  - dependency-name: pytest
+    versions:
+    - 6.2.1
+    - 6.2.2
+  - dependency-name: requests
+    versions:
+    - 2.25.1
+  - dependency-name: starlette
+    versions:
+    - 0.14.2
+  - dependency-name: isort
+    versions:
+    - 5.7.0
+  - dependency-name: arq
+    versions:
+    - 0.19.1
