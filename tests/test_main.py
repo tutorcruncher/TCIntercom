@@ -76,6 +76,8 @@ def get_mock_response(test, error=False):
 
 return_dict = {
     'no_companies': {'companies': {'type': 'list', 'data': []}},
+    'blog_new_user': {'data': []},
+    'blog_existing_user': {'data': [{'id': 123}]},
 }
 
 
@@ -203,3 +205,17 @@ def test_message_unsnooze_dont_close(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'No action required'}
+
+
+def test_blog_sub_new_user(monkeypatch, client):
+    monkeypatch.setattr(session, 'request', get_mock_response('blog_new_user'))
+    data = {'data': {'email': 'test@testing.com', 'tc-sub-all': 'on'}}
+    r = client.post('/blog-callback/', json=data)
+    assert r.json() == {'message': 'Blog subscriptions added to a user'}
+
+
+def test_blog_sub_existing_user(monkeypatch, client):
+    monkeypatch.setattr(session, 'request', get_mock_response('blog_existing_user'))
+    data = {'data': {'email': 'test@testing.com', 'tc-sub-all': 'on'}}
+    r = client.post('/blog-callback/', json=data)
+    assert r.json() == {'message': 'Blog subscriptions added to existing user'}

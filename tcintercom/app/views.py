@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
+from distutils.log import debug
 from typing import Optional
 
 import requests
@@ -156,4 +157,33 @@ async def callback(request: Request):
     elif topic == 'conversation.admin.unsnoozed':
         msg = await check_unsnoozed_conv(item_data) or msg
     logger.info({'conversation': item_data['id'], 'message': msg})
+    return JSONResponse({'message': msg})
+
+
+async def blog_callback(request: Request):
+    try:
+        data = json.loads(await request.body())
+    except ValueError:
+        return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
+    data = data['data']
+
+    q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
+    r = await intercom_request('/contacts/search', data=q, method='POST')
+
+    data_to_send = {
+        'role': 'user',
+        'email': data['email'],
+    }
+    sub_all = data.pop('tc-sub-all')
+    if sub_all == 'on':
+        data_to_send['custom_attributes'] = {'tc-sub-all': True}
+    else:
+        data_to_send['custom_attributes'] = {k: True for k, v in data.items() if k.startswith('tc') and v == 'on'}
+
+    if r['data']:
+        await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
+        msg = 'Blog subscriptions added to existing user'
+    else:
+        await intercom_request(url='/contacts', data=data_to_send, method='POST')
+        msg = 'Blog subscriptions added to a user'
     return JSONResponse({'message': msg})
