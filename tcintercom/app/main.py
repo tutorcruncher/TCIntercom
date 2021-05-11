@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from .settings import Settings
-from .views import callback, index, raise_error, blog_callback
+from .views import blog_callback, callback, index, raise_error
 
 
 async def lifespan(app):

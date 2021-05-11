@@ -1,7 +1,6 @@
 import json
 import logging
 from datetime import datetime, timedelta
-from distutils.log import debug
 from typing import Optional
 
 import requests
@@ -180,7 +179,7 @@ async def blog_callback(request: Request):
     else:
         data_to_send['custom_attributes'] = {k: True for k, v in data.items() if k.startswith('tc') and v == 'on'}
 
-    if r['data']:
+    if r.get('data'):
         await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscriptions added to existing user'
     else:
