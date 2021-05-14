@@ -173,16 +173,16 @@ async def blog_callback(request: Request):
         'role': 'user',
         'email': data['email'],
     }
-    sub_all = data.pop('tc-sub-all')
+    sub_all = data.pop('all-subscribe')
     if sub_all == 'on':
-        data_to_send['custom_attributes'] = {'tc-sub-all': True}
+        data_to_send['custom_attributes'] = {'all-subscribe': True}
     else:
-        data_to_send['custom_attributes'] = {k: True for k, v in data.items() if k.startswith('tc') and v == 'on'}
+        data_to_send['custom_attributes'] = {k: True for k, v in data.items() if v == 'on'}
 
     if r.get('data'):
         await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscriptions added to existing user'
     else:
         await intercom_request(url='/contacts', data=data_to_send, method='POST')
-        msg = 'Blog subscriptions added to a user'
+        msg = 'Blog subscriptions added to a new user'
     return JSONResponse({'message': msg})
