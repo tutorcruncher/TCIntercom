@@ -34,9 +34,6 @@ async def intercom_request(url: str, data: Optional[dict] = None, method: str = 
         r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
         r.raise_for_status()
         return r.json()
-    elif not conf.ic_token:
-        logger.info('Not set')
-        print('not set')
 
 
 async def github_request(url: str, data: dict):
@@ -173,6 +170,7 @@ async def blog_callback(request: Request):
     r = await intercom_request('/contacts/search', data=q, method='POST')
 
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
+
     if r.get('data'):
         await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscription added to existing user'
