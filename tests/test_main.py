@@ -209,13 +209,13 @@ def test_message_unsnooze_dont_close(monkeypatch, client):
 
 def test_blog_sub_new_user(monkeypatch, client):
     monkeypatch.setattr(session, 'request', get_mock_response('blog_new_user'))
-    data = {'data': {'email': 'test@testing.com', 'all-subscribe': 'on'}}
-    r = client.post('/blog-callback/', json=data)
-    assert r.json() == {'message': 'Blog subscriptions added to a new user'}
+    form_data = {'data': {'email': 'test@testing.com'}}
+    r = client.post('/blog-callback/', json=form_data)
+    assert r.json() == {'message': 'Blog subscription added to a new user'}
 
 
 def test_blog_sub_existing_user(monkeypatch, client):
     monkeypatch.setattr(session, 'request', get_mock_response('blog_existing_user'))
-    data = {'data': {'email': 'test@testing.com', 'all-subscribe': 'on'}}
-    r = client.post('/blog-callback/', json=data)
-    assert r.json() == {'message': 'Blog subscriptions added to existing user'}
+    form_data = {'data': {'email': 'test@testing.com'}}
+    r = client.post('/blog-callback/', json=form_data)
+    assert r.json() == {'message': 'Blog subscription added to existing user'}
