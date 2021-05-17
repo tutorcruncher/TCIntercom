@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ic_bot_id: int = 2693259
     redis_url: str = 'redis://localhost:6379'
     tc_url: str = 'http://tutorcruncher.com'
+    netlify_key: str = ''
 
     @property
     def redis_settings(self):
@@ -24,4 +25,5 @@ class Settings(BaseSettings):
             'ic_token': {'env': 'IC_TOKEN'},
             'redis_url': {'env': 'REDIS_URL'},
             'ic_bot_id': {'env': 'IC_BOT_ID'},
+            'netlify_key': {'env': 'NETLIFY_KEY'},
         }

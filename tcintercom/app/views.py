@@ -3,7 +3,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
+import jwt
 import requests
+from jwt import InvalidSignatureError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -160,17 +162,22 @@ async def callback(request: Request):
 
 
 async def blog_callback(request: Request):
+
+    try:
+        jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms="HS256")
+    except InvalidSignatureError:
+        return JSONResponse({'error': 'Invalid Signature'}, status_code=400)
+
     try:
         data = json.loads(await request.body())
     except ValueError:
         return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-    data = data['data']
 
+    data = data['data']
     q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
     r = await intercom_request('/contacts/search', data=q, method='POST')
 
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
-
     if r.get('data'):
         await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscription added to existing user'
