@@ -5,3 +5,4 @@ sentry_sdk==0.20.3
 beautifulsoup4==4.9.2
 pydantic==1.8
 arq==0.19
+PyJWT==2.1.0
