@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 
+import jwt
 from requests import RequestException
 
-from tcintercom.app.views import session
+from tcintercom.app.views import conf, session
 
 
 def test_index(client):
@@ -76,6 +77,8 @@ def get_mock_response(test, error=False):
 
 return_dict = {
     'no_companies': {'companies': {'type': 'list', 'data': []}},
+    'blog_new_user': {'data': []},
+    'blog_existing_user': {'data': [{'id': 123}]},
 }
 
 
@@ -203,3 +206,34 @@ def test_message_unsnooze_dont_close(monkeypatch, client):
     }
     r = client.post('/callback/', json=ic_data)
     assert r.json() == {'message': 'No action required'}
+
+
+def test_blog_sub_new_user(monkeypatch, client):
+    monkeypatch.setattr(session, 'request', get_mock_response('blog_new_user'))
+    monkeypatch.setattr(conf, 'ic_token', 'TESTKEY')
+    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
+    encoded_jwt = jwt.encode({"some": "payload"}, conf.netlify_key, algorithm="HS256")
+
+    form_data = {'data': {'email': 'test@testing.com'}}
+    r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+    assert r.json() == {'message': 'Blog subscription added to a new user'}
+
+
+def test_blog_sub_existing_user(monkeypatch, client):
+    monkeypatch.setattr(session, 'request', get_mock_response('blog_existing_user'))
+    monkeypatch.setattr(conf, 'ic_token', 'TESTKEY')
+    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
+    encoded_jwt = jwt.encode({"some": "payload"}, conf.netlify_key, algorithm="HS256")
+
+    form_data = {'data': {'email': 'test@testing.com'}}
+    r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+    assert r.json() == {'message': 'Blog subscription added to existing user'}
+
+
+def test_incorrect_key(monkeypatch, client):
+    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
+    encoded_jwt = jwt.encode({"some": "payload"}, 'incorrect_key', algorithm="HS256")
+
+    form_data = {'data': {'email': 'test@testing.com'}}
+    r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+    assert r.json() == {'error': 'Invalid Signature'}
