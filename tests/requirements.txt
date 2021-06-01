@@ -1,5 +1,5 @@
 pytest==6.2.3
-black==21.5b1
+black==21.5b2
 flake8==3.8.3
 isort==5.8.0
 pycodestyle==2.6.0
