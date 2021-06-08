@@ -11,6 +11,12 @@ def test_index(client):
     assert r.content.decode() == "TutorCruncher's service for managing Intercom is Online"
 
 
+def test_robots(client):
+    r = client.get('/robots.txt')
+    assert r.status_code == 200
+    assert b'User-agent: *' in r.content
+
+
 def test_no_action_needed(client):
     data = {'data': {'item': {'id': 500}}}
     r = client.post('/callback/', json=data)

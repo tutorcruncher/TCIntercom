@@ -7,7 +7,7 @@ import jwt
 import requests
 from jwt import InvalidSignatureError
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response, FileResponse
+from starlette.responses import FileResponse, JSONResponse, Response
 
 from .settings import Settings
 
@@ -20,8 +20,10 @@ conf = Settings()
 async def index(request: Request):
     return Response("TutorCruncher's service for managing Intercom is Online")
 
+
 async def robots(request: Request):
     return FileResponse(path='tcintercom/robots.txt', media_type='text/plain')
+
 
 async def raise_error(request: Request):
     raise RuntimeError('Purposeful error')
