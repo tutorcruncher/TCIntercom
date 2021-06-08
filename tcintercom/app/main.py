@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from .settings import Settings
-from .views import blog_callback, callback, index, raise_error
+from .views import blog_callback, callback, index, raise_error, robots
 
 
 async def lifespan(app):
@@ -24,6 +24,7 @@ def create_app():
             Route('/callback/', callback, methods=['POST']),
             Route('/blog-callback/', blog_callback, methods=['POST']),
             Route('/error/', raise_error),
+            Route('/robots.txt', robots),
         ],
         lifespan=lifespan,
     )
