@@ -3,7 +3,7 @@ requests==2.25.1
 uvicorn==0.13.4
 sentry_sdk==1.0.0
 beautifulsoup4==4.9.3
-pydantic==1.8.1
+pydantic==1.8.2
 arq==0.20
 PyJWT==2.1.0
 aiofiles==0.7.0
