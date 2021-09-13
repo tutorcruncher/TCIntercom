@@ -1,6 +1,6 @@
-pytest==6.2.4
-black==21.5b1
-flake8==3.8.3
-isort==5.8.0
-pycodestyle==2.6.0
+pytest==6.2.5
+black==21.8b0
+flake8==3.9.2
+isort==5.9.3
+pycodestyle==2.7.0
 pytest-cov==2.12.1
