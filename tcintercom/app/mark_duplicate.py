@@ -31,6 +31,7 @@ async def run(ctx):
     mark_not_dupe_update_intercom(mark_not_dupe)
 
 
+# Returns a list of all contacts that were active in the last 91 days
 def list_all_contacts():
     response = intercom_request('/contacts?per_page=150')
     contacts = response['data']
@@ -46,18 +47,29 @@ def list_all_contacts():
     return contacts
 
 
+# Filters through and assigns contacts as either duplicate or not
 def get_relevant_accounts(recently_active: list):
     keep_contacts = {}
     mark_dupe_contacts = []
 
     for contact in recently_active:
         if contact['email'] not in keep_contacts.keys():
+            # If contact email has not been seen before, add it to the dictionary of unique contacts
+            keep_contacts[contact['email']] = contact
+        elif (
+            contact['email'] in keep_contacts.keys()
+            and keep_contacts[contact['email']].get('is_duplicate')
+            and contact.get('is_duplicate') is False
+        ):
+            # If more recent is not duplicate and original is
+            mark_dupe_contacts.append(keep_contacts[contact['email']])
             keep_contacts[contact['email']] = contact
         elif (
             contact['email'] in keep_contacts.keys()
             and contact.get('session_count')
             and keep_contacts[contact['email']].get('session_count') < contact['session_count']
         ):
+            # If this new contact has a larger session count replace the existing contact and add it to duplicates
             mark_dupe_contacts.append(keep_contacts[contact['email']])
             keep_contacts[contact['email']] = contact
         elif (
@@ -65,12 +77,13 @@ def get_relevant_accounts(recently_active: list):
             and keep_contacts[contact['email']]['last_seen_at']
             and keep_contacts[contact['email']]['last_seen_at'] < contact['last_seen_at']
         ):
+            # Take the most recently active contact to be the unique contact
             mark_dupe_contacts.append(keep_contacts[contact['email']])
             keep_contacts[contact['email']] = contact
         elif (
             contact['email'] in keep_contacts.keys()
             and not keep_contacts[contact['email']]['last_seen_at']
-            and keep_contacts[contact['email']]['created_at'] < contact['created_at']
+            and keep_contacts[contact['email']]['created_at'] > contact['created_at']
         ):
             mark_dupe_contacts.append(keep_contacts[contact['email']])
             keep_contacts[contact['email']] = contact
