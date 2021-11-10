@@ -3,4 +3,4 @@ black==21.9b0
 flake8==3.9.2
 isort==5.9.3
 pycodestyle==2.7.0
-pytest-cov==2.12.1
+pytest-cov==3.0.0
