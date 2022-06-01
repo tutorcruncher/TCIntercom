@@ -1,4 +1,4 @@
-starlette==0.19.1
+starlette==0.20.1
 requests==2.27.1
 uvicorn==0.17.6
 sentry_sdk==1.5.10
