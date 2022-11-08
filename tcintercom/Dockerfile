@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.9.15-slim-bullseye
 
 ADD ./requirements.txt /home/app/requirements.txt
 RUN pip install -r /home/app/requirements.txt
