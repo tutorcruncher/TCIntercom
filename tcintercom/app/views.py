@@ -166,7 +166,6 @@ async def callback(request: Request):
 
 
 async def blog_callback(request: Request):
-
     try:
         jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms="HS256")
     except InvalidSignatureError:
