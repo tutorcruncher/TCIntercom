@@ -6,6 +6,6 @@ httpx==0.24.1
 pydantic==1.10.9
 PyJWT==2.6.0
 requests==2.31.0
-sentry_sdk==1.26.0
+sentry_sdk==1.29.1
 starlette==0.28.0
 uvicorn==0.22.0
