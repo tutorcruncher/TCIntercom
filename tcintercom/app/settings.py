@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 from arq.connections import RedisSettings
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
             host=conf.hostname, port=conf.port, password=conf.password, database=int((conf.path or '0').strip('/'))
         )
 
-    class Config:
+    class ConfigDict:
         fields = {
             'gh_token': {'env': 'GH_TOKEN'},
             'ic_token': {'env': 'IC_TOKEN'},
