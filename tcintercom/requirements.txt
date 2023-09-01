@@ -1,4 +1,4 @@
-aiofiles==23.1.0
+aiofiles==23.2.1
 aioredis==2.0.1
 arq==0.25.0
 beautifulsoup4==4.12.2
