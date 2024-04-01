@@ -7,6 +7,6 @@ pydantic==2.6.3
 pydantic-settings==2.2.1
 PyJWT==2.8.0
 requests==2.31.0
-sentry_sdk==1.40.6
+sentry_sdk==1.44.0
 starlette==0.37.1
 uvicorn==0.27.1
