@@ -1,6 +1,6 @@
 aiofiles==23.2.1
 aioredis==2.0.1
-arq==0.25.0
+arq==0.26.0
 beautifulsoup4==4.12.3
 httpx==0.27.0
 pydantic==2.7.1
