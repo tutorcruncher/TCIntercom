@@ -2,21 +2,13 @@
 import logging
 import os
 
-import click
 import uvicorn
-from app.logs import setup_logging
 from app.main import create_app
+from app.routers.worker import WorkerSettings
 from app.settings import Settings
-from app.worker import WorkerSettings
 from arq import run_worker
 
 logger = logging.getLogger('tc-intercom.run')
-
-
-@click.group()
-@click.option('-v', '--verbose', is_flag=True)
-def cli(verbose):
-    setup_logging(verbose)
 
 
 def web():
@@ -34,7 +26,6 @@ def worker():
     run_worker(WorkerSettings, redis_settings=settings.redis_settings, ctx={'settings': settings})
 
 
-@cli.command()
 def auto():
     port_env = os.getenv('PORT')
     dyno_env = os.getenv('DYNO')
@@ -50,7 +41,3 @@ def auto():
     else:
         logger.info('no environment variable found to infer command, assuming worker')
         worker()
-
-
-if __name__ == '__main__':
-    cli()

@@ -1,6 +1,6 @@
-from fastapi_utilities import repeat_at
+from arq import cron
 
-from tcintercom.app2.mark_duplicate import (
+from .._mark_duplicate import (
     get_relevant_accounts,
     list_all_contacts,
     mark_duplicates_in_intercom,
@@ -8,8 +8,7 @@ from tcintercom.app2.mark_duplicate import (
 )
 
 
-@repeat_at(cron='0 * * * *')
-async def run(ctx):
+async def update_duplicate_contacts(ctx):
     """
     Runs every hour, and updates intercom with the relevant duplicate/not duplicate contacts
     """
@@ -17,3 +16,7 @@ async def run(ctx):
     mark_duplicate, mark_not_dupe = get_relevant_accounts(contacts)
     mark_duplicates_in_intercom(mark_duplicate)
     mark_not_dupicates_update_intercom(mark_not_dupe)
+
+
+class WorkerSettings:
+    cron_jobs = [cron(update_duplicate_contacts, hour=1, timeout=600)]
