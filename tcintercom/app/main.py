@@ -24,5 +24,4 @@ def create_app():
     if dsn := os.getenv('RAVEN_DSN'):
         sentry_sdk.init(dsn=dsn)
         app.add_middleware(SentryAsgiMiddleware)
-
     return app
