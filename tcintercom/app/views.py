@@ -82,7 +82,7 @@ async def handle_intercom_callback(request: Request):
 
 async def handle_blog_callback(request: Request):
     try:
-        jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms="HS256")
+        jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms='HS256')
     except InvalidSignatureError:
         return JSONResponse({'error': 'Invalid Signature'}, status_code=400)
 

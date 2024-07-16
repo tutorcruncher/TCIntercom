@@ -7,7 +7,7 @@ from ..views import handle_blog_callback, handle_intercom_callback
 views_router = APIRouter()
 
 
-@views_router.get("/")
+@views_router.get('/')
 def index():
     return {'message': "TutorCruncher's service for managing Intercom is Online"}
 

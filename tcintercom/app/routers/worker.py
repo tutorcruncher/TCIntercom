@@ -19,4 +19,4 @@ async def update_duplicate_contacts(ctx):
 
 
 class WorkerSettings:
-    cron_jobs = [cron(update_duplicate_contacts, hour=1, timeout=600)]
+    cron_jobs = [cron(update_duplicate_contacts, second=59, timeout=600)]

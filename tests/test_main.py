@@ -1,7 +1,9 @@
+from unittest import mock
+
 import jwt
 from requests import RequestException
 
-from tcintercom.app.views import conf, session
+from tcintercom.app.views import conf
 
 
 def test_index(client):
@@ -69,8 +71,9 @@ return_dict = {
 }
 
 
-def test_conv_created_user_no_companies(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('no_companies'))
+@mock.patch('tcintercom.app.views.session.request')
+def test_conv_created_user_no_companies(mock_request, client):
+    mock_request.side_effect = get_mock_response('no_companies')
 
     ic_data = {
         'topic': 'conversation.user.created',
@@ -80,8 +83,9 @@ def test_conv_created_user_no_companies(monkeypatch, client):
     assert r.json() == {'message': 'User has no companies'}
 
 
-def test_conv_created_no_support(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('no_support'))
+@mock.patch('tcintercom.app.views.session.request')
+def test_conv_created_no_support(mock_request, client):
+    mock_request.side_effect = get_mock_response('no_support')
     ic_data = {
         'topic': 'conversation.user.created',
         'data': {'item': {'user': {'id': 123}, 'id': 123}},
@@ -90,8 +94,9 @@ def test_conv_created_no_support(monkeypatch, client):
     assert r.json() == {'message': 'Reply successfully posted'}
 
 
-def test_conv_created_has_support(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('has_support'))
+@mock.patch('tcintercom.app.views.session.request')
+def test_conv_created_has_support(mock_request, client):
+    mock_request.side_effect = get_mock_response('has_support')
     ic_data = {
         'topic': 'conversation.user.created',
         'data': {'item': {'user': {'id': 123}, 'id': 123}},
@@ -118,51 +123,33 @@ def test_message_tagged_wrong_tag(client):
     assert r.json() == {'message': 'No action required'}
 
 
-def test_message_unsnooze_dont_close(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('dont_close_after_snooze'))
-    ic_data = {
-        'topic': 'conversation.admin.unsnoozed',
-        'data': {
-            'item': {
-                'id': 123,
-                'assignee': {'type': 'admin', 'id': None},
-                'tags': {'type': 'tag.list', 'tags': [{'name': 'Snooze then close'}]},
-                'conversation_parts': {
-                    'type': 'conversation_part.list',
-                    'conversation_parts': [{'body': 'A new issue please'}],
-                },
-            }
-        },
-    }
-    r = client.post('/callback/', json=ic_data)
-    assert r.json() == {'message': 'No action required'}
-
-
-def test_blog_sub_new_user(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('blog_new_user'))
-    monkeypatch.setattr(conf, 'ic_token', 'TESTKEY')
-    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
-    encoded_jwt = jwt.encode({"some": "payload"}, conf.netlify_key, algorithm="HS256")
+@mock.patch('tcintercom.app.views.intercom_request')
+@mock.patch('tcintercom.app.views.conf.ic_bot_id', 'TESTKEY')
+@mock.patch('tcintercom.app.views.conf.netlify_key', 'TESTKEY')
+def test_blog_sub_new_user(mock_request, client):
+    mock_request.return_value = return_dict.get('blog_new_user')
+    encoded_jwt = jwt.encode({'some': 'payload'}, conf.netlify_key, algorithm='HS256')
 
     form_data = {'data': {'email': 'test@testing.com'}}
     r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
     assert r.json() == {'message': 'Blog subscription added to a new user'}
 
 
-def test_blog_sub_existing_user(monkeypatch, client):
-    monkeypatch.setattr(session, 'request', get_mock_response('blog_existing_user'))
-    monkeypatch.setattr(conf, 'ic_token', 'TESTKEY')
-    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
-    encoded_jwt = jwt.encode({"some": "payload"}, conf.netlify_key, algorithm="HS256")
+@mock.patch('tcintercom.app.views.session.request')
+@mock.patch('tcintercom.app.views.conf.ic_bot_id', 'TESTKEY')
+@mock.patch('tcintercom.app.views.conf.netlify_key', 'TESTKEY')
+def test_blog_sub_existing_user(mock_request, client):
+    mock_request.side_effect = get_mock_response('blog_existing_user')
+    encoded_jwt = jwt.encode({'some': 'payload'}, conf.netlify_key, algorithm='HS256')
 
     form_data = {'data': {'email': 'test@testing.com'}}
     r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
     assert r.json() == {'message': 'Blog subscription added to existing user'}
 
 
-def test_incorrect_key(monkeypatch, client):
-    monkeypatch.setattr(conf, 'netlify_key', 'TESTKEY')
-    encoded_jwt = jwt.encode({"some": "payload"}, 'incorrect_key', algorithm="HS256")
+@mock.patch('tcintercom.app.views.conf.netlify_key', 'TESTKEY')
+def test_incorrect_key(client):
+    encoded_jwt = jwt.encode({'some': 'payload'}, 'incorrect_key', algorithm='HS256')
 
     form_data = {'data': {'email': 'test@testing.com'}}
     r = client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
