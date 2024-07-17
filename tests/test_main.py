@@ -135,11 +135,11 @@ def test_blog_sub_new_user(mock_request, client):
     assert r.json() == {'message': 'Blog subscription added to a new user'}
 
 
-@mock.patch('tcintercom.app.views.session.request')
+@mock.patch('tcintercom.app.views.intercom_request')
 @mock.patch('tcintercom.app.views.conf.ic_bot_id', 'TESTKEY')
 @mock.patch('tcintercom.app.views.conf.netlify_key', 'TESTKEY')
 def test_blog_sub_existing_user(mock_request, client):
-    mock_request.side_effect = get_mock_response('blog_existing_user')
+    mock_request.return_value = return_dict.get('blog_existing_user')
     encoded_jwt = jwt.encode({'some': 'payload'}, conf.netlify_key, algorithm='HS256')
 
     form_data = {'data': {'email': 'test@testing.com'}}
