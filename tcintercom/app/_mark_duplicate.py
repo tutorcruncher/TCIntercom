@@ -1,10 +1,11 @@
 import time
+from typing import Optional
 
 from .views import intercom_request
 
 
 class DuplicateContactChecks:
-    def __init__(self, keep_contact: dict | None, contact: dict):
+    def __init__(self, keep_contact: Optional[dict], contact: dict):
         self.keep_contact = keep_contact
         self.contact = contact
         self.email = contact.get('email')
