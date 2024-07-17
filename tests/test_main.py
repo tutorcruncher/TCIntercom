@@ -111,7 +111,7 @@ def get_mock_response(test, error=False):
     return MockResponse
 
 
-class IntercomCallbackTestCase(TestCase):
+class BasicEndpointsTestCase(TestCase):
     def setUp(self):
         self.client = TestClient(create_app())
 
@@ -136,6 +136,11 @@ class IntercomCallbackTestCase(TestCase):
         r = self.client.get('/robots.txt')
         assert r.status_code == 200
         assert b'User-agent: *' in r.content
+
+
+class IntercomCallbackTestCase(TestCase):
+    def setUp(self):
+        self.client = TestClient(create_app())
 
     def test_no_action_needed(self):
         """
