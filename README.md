@@ -1,3 +1,4 @@
+# TODO update readme
 # TC Intercom
 
-A simple web app built with Starlette to deal with Intercom webhooks.
+A simple web app built with FastAPI to deal with Intercom webhooks.

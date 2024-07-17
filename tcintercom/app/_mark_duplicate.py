@@ -1,15 +1,51 @@
-import logging
 import time
 
-import requests
-
-from .settings import Settings
 from .views import intercom_request
 
-session = requests.Session()
-logger = logging.getLogger('tc-intercom.views')
 
-conf = Settings()
+class DuplicateContactChecks:
+    def __init__(self, keep_contact: dict | None, contact: dict):
+        self.keep_contact = keep_contact
+        self.contact = contact
+        self.email = contact.get('email')
+        self.last_seen_at = contact.get('last_seen_at')
+        self.is_duplicate = contact.get('custom_attributes', {}).get('is_duplicate')
+        self.session_count = contact.get('session_count')
+
+    def check_new_contact(self) -> bool:
+        """
+        Checks if this is the first time seeing the contact, add it to the dictionary of unique contacts
+        """
+        return not bool(self.keep_contact)
+
+    def check_more_recent_not_duplicate(self) -> bool:
+        """
+        Checks if the contact in keep_contacts is a duplicate but the most recent contact we're processing is not
+        """
+        return (
+            self.keep_contact and self.keep_contact['custom_attributes'].get('is_duplicate') and not self.is_duplicate
+        )
+
+    def check_more_recently_active(self) -> bool:
+        """
+        Checks if the new contact is more recently active than the contact in keep_contacts
+        """
+        return (
+            self.keep_contact
+            and self.keep_contact.get('last_seen_at')
+            and self.last_seen_at
+            and self.keep_contact['last_seen_at'] < self.last_seen_at
+        )
+
+    def check_created_at(self) -> bool:
+        """
+        Checks if the new contact was created more recently than the contact in keep_contacts
+        """
+        return (
+            self.keep_contact
+            and not self.keep_contact.get('last_seen_at')
+            and self.keep_contact['created_at'] > self.contact['created_at']
+        )
 
 
 def list_all_contacts() -> list:
@@ -39,57 +75,30 @@ def get_relevant_accounts(recently_active: list) -> tuple[list, list]:
 
     for contact in recently_active:
         email = contact['email']
-        if email not in keep_contacts.keys():
-            # If contact email has not been seen before, add it to the dictionary of unique contacts
+        keep_contact = keep_contacts.get(email)
+        contact_checks = DuplicateContactChecks(contact=contact, keep_contact=keep_contact)
+        if contact_checks.check_new_contact():
             keep_contacts[email] = contact
-        elif (
-            email in keep_contacts.keys()
-            and keep_contacts[email]['custom_attributes'].get('is_duplicate')
-            and contact['custom_attributes'].get('is_duplicate') is False
-        ):
-            # If more recent is not duplicate and original is
+        elif contact_checks.check_more_recent_not_duplicate():
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
-        elif (
-            email in keep_contacts.keys()
-            and contact.get('session_count')
-            and keep_contacts[email].get('session_count') < contact['session_count']
-        ):
-            # If this new contact has a larger session count replace the existing contact and add it to duplicates
+        elif contact_checks.check_more_recently_active():
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
-        elif (
-            email in keep_contacts.keys()
-            and keep_contacts[email]['last_seen_at']
-            and keep_contacts[email]['last_seen_at'] < contact['last_seen_at']
-        ):
-            # Take the most recently active contact to be the unique contact
-            mark_dupe_contacts.append(keep_contacts[email])
-            keep_contacts[email] = contact
-        elif (
-            email in keep_contacts.keys()
-            and not keep_contacts[email]['last_seen_at']
-            and keep_contacts[email]['created_at'] > contact['created_at']
-        ):
+        elif contact_checks.check_created_at():
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
         else:
             mark_dupe_contacts.append(contact)
 
-    # Only need to unmark the ones that are not already marked as duplicates
-    mark_not_dupe_contacts = [v for k, v in keep_contacts.items() if v['custom_attributes'].get('is_duplicate')]
-    # Only need to mark the ones that are not already marked as duplicates
-    mark_dupe_contacts = [
-        contact for contact in mark_dupe_contacts if not contact['custom_attributes'].get('is_duplicate')
-    ]
-    return mark_dupe_contacts, mark_not_dupe_contacts
+    keep_con_list = [v for k, v in keep_contacts.items()]
+    return mark_dupe_contacts, keep_con_list
 
 
 def update_duplicate_custom_attribute(contacts_to_update: list, mark_duplicate: bool):
     """
     Takes a list of contacts and depending on what mark duplicate is, marks them as a duplicate or not a duplicate.
     """
-    print(contacts_to_update)
     for contact in contacts_to_update:
         if contact['custom_attributes'].get('is_duplicate') != mark_duplicate:
             url = f'/contacts/{contact["id"]}'
