@@ -1,31 +1,15 @@
 import logging
 import time
-from typing import Optional
 
 import requests
 
 from .settings import Settings
+from .views import intercom_request
 
 session = requests.Session()
 logger = logging.getLogger('tc-intercom.views')
 
 conf = Settings()
-
-
-def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
-    """
-    Makes a request to Intercom, takes the url to post to, the data to post and the method to use when making the
-    request.
-    """
-    data = data or {}
-    headers = {
-        'Authorization': 'Bearer ' + conf.ic_token,
-        'Accept': 'application/json',
-    }
-    if not (method == 'POST' and not conf.ic_token):
-        r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
-        r.raise_for_status()
-        return r.json()
 
 
 def list_all_contacts() -> list:
@@ -92,28 +76,26 @@ def get_relevant_accounts(recently_active: list) -> tuple[list, list]:
         else:
             mark_dupe_contacts.append(contact)
 
-    keep_con_list = [v for k, v in keep_contacts.items()]
+    # Only need to unmark the ones that are not already marked as duplicates
+    mark_not_dupe_contacts = [v for k, v in keep_contacts.items() if v['custom_attributes'].get('is_duplicate')]
+    # Only need to mark the ones that are not already marked as duplicates
+    mark_dupe_contacts = [
+        contact for contact in mark_dupe_contacts if not contact['custom_attributes'].get('is_duplicate')
+    ]
+    return mark_dupe_contacts, mark_not_dupe_contacts
 
-    return mark_dupe_contacts, keep_con_list
 
-
-def mark_duplicates_in_intercom(mark_duplicate: list):
+def update_duplicate_custom_attribute(contacts_to_update: list, mark_duplicate: bool):
     """
-    Takes a list of contacts and if they are not marked as duplicates, marks them as a duplicate.
+    Takes a list of contacts and depending on what mark duplicate is, marks them as a duplicate or not a duplicate.
     """
-    for contact in mark_duplicate:
-        if contact['custom_attributes'].get('is_duplicate') is not True:
+    print(contacts_to_update)
+    for contact in contacts_to_update:
+        if contact['custom_attributes'].get('is_duplicate') != mark_duplicate:
             url = f'/contacts/{contact["id"]}'
-            data = {'role': contact['role'], 'email': contact['email'], 'custom_attributes': {'is_duplicate': True}}
-            intercom_request(url, method='PUT', data=data)
-
-
-def mark_not_dupicates_update_intercom(mark_not_duplicate: list):
-    """
-    Takes a list of contacts and if they are marked as duplicates, marks them as not a duplicate.
-    """
-    for contact in mark_not_duplicate:
-        if contact['custom_attributes'].get('is_duplicate') is not False:
-            url = f'/contacts/{contact["id"]}'
-            data = {'role': contact['role'], 'email': contact['email'], 'custom_attributes': {'is_duplicate': False}}
+            data = {
+                'role': contact['role'],
+                'email': contact['email'],
+                'custom_attributes': {'is_duplicate': mark_duplicate},
+            }
             intercom_request(url, method='PUT', data=data)

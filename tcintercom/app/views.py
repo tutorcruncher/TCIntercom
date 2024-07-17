@@ -1,5 +1,6 @@
 import json
 import logging
+from enum import Enum
 from typing import Optional
 
 import jwt
@@ -28,7 +29,13 @@ If your query is urgent, please reply with 'This is urgent' and we'll get someon
 it as soon as possible."""
 
 
-async def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
+class SupportTag(str, Enum):
+    NO_SUPPORT = 'No Support'
+    CHAT_SUPPORT = 'Chat Support'
+    PHONE_SUPPORT = 'Phone Support'
+
+
+def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
     """
     Makes a request to Intercom, takes the url, data and method to use when making the request.
     """
@@ -44,15 +51,22 @@ async def intercom_request(url: str, data: Optional[dict] = None, method: str = 
         return r.json()
 
 
+async def async_intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
+    """
+    Asynchronous version of intercom_request
+    """
+    return intercom_request(url, data, method)
+
+
 async def check_support_reply(item: dict):
     user_id = item['user']['id']
-    user_data = await intercom_request(f'/contacts/{user_id}/')
+    user_data = await async_intercom_request(f'/contacts/{user_id}/')
     companies = user_data.get('companies', {}).get('data')
     if not companies:
         return 'User has no companies'
-    company_data = await intercom_request(companies[0]['url'])
+    company_data = await async_intercom_request(companies[0]['url'])
     support_level = company_data.get('custom_attributes', {}).get('support_plan')
-    if support_level == 'No Support':
+    if support_level == SupportTag.NO_SUPPORT:
         reply_data = {
             'type': 'admin',
             'message_type': 'comment',
@@ -60,7 +74,7 @@ async def check_support_reply(item: dict):
             'body': SUPPORT_TEMPLATE,
             'assignee': conf.ic_bot_id,
         }
-        await intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
+        await async_intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
         return 'Reply successfully posted'
     else:
         return 'Company has support'
@@ -93,13 +107,13 @@ async def handle_blog_callback(request: Request):
 
     data = data['data']
     q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
-    r = await intercom_request('/contacts/search', data=q, method='POST')
+    r = await async_intercom_request('/contacts/search', data=q, method='POST')
 
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
     if r.get('data'):
-        await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
+        await async_intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscription added to existing user'
     else:
-        await intercom_request(url='/contacts', data=data_to_send, method='POST')
+        await async_intercom_request(url='/contacts', data=data_to_send, method='POST')
         msg = 'Blog subscription added to a new user'
     return JSONResponse({'message': msg})
