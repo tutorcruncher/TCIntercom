@@ -108,6 +108,7 @@ async def handle_blog_callback(request: Request):
     data = data['data']
     q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
     r = await async_intercom_request('/contacts/search', data=q, method='POST')
+    print(r)
 
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
     if r.get('data'):
