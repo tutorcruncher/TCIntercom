@@ -8,9 +8,29 @@ from app.logs import setup_logging
 from app.main import create_app
 from app.routers.worker import WorkerSettings
 from app.settings import Settings
-from arq import run_worker
+from arq.worker import run_worker
 
 logger = logging.getLogger('tc-intercom.run')
+
+
+# class TCIntercomWorker(Worker):
+#     async def run_job(self, job_id: str, score: int) -> None:
+#         """
+#         Overrides the run_job method from arq Worker class to use logfire to log the jobs.
+#         """
+#         func = job_id.split(':')[1]
+#         with logfire.span(func):
+#             await super().run_job(job_id, score)
+#
+#
+# def create_worker(settings_cls: WorkerSettingsType, **kwargs: Any) -> TCIntercomWorker:
+#     """
+#     Looks at arq create_worker function and does the same, except it uses the TCIntercomWorker class which allows us
+#     to use logfire to log the jobs.
+#     """
+#     worker = TCIntercomWorker(**{**get_kwargs(settings_cls), **kwargs})
+#     worker.run()
+#     return worker
 
 
 @click.group()

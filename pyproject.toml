@@ -13,3 +13,6 @@
 
 [tool.pytest.ini_options]
     asyncio_mode = "auto"
+
+[tool.logfire]
+    ignore_no_config = true
