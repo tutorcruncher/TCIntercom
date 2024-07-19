@@ -8,11 +8,11 @@ from logfire import PydanticPlugin
 def logfire_setup(service_name: str):
     from .main import app_settings
 
-    if not app_settings.testing and bool(app_settings.logfire_token):
+    if not app_settings.testing and (logfire_token := app_settings.logfire_token):
         logfire.configure(
             service_name=service_name,
             send_to_logfire=True,
-            token=app_settings.logfire_token,
+            token=logfire_token,
             pydantic_plugin=PydanticPlugin(record='all'),
             console=False,
         )

@@ -11,7 +11,6 @@ class DuplicateContactChecks:
         self.email = contact.get('email')
         self.last_seen_at = contact.get('last_seen_at')
         self.is_duplicate = contact.get('custom_attributes', {}).get('is_duplicate')
-        self.session_count = contact.get('session_count')
 
     def check_new_contact(self) -> bool:
         """

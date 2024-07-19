@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.11
 import logging
 import os
 from typing import Any
@@ -6,12 +6,13 @@ from typing import Any
 import click
 import logfire
 import uvicorn
-from app.logs import logfire_setup, setup_logging
-from app.main import create_app
-from app.routers.worker import WorkerSettings
-from app.settings import Settings
 from arq.typing import WorkerSettingsType
 from arq.worker import Worker, get_kwargs
+
+from .app.logs import logfire_setup, setup_logging
+from .app.main import create_app
+from .app.routers.worker import WorkerSettings
+from .app.settings import Settings
 
 logger = logging.getLogger('tc-intercom.run')
 
