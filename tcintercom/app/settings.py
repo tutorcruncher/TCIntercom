@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     testing: bool = False
-    gh_token: str = ''
     ic_token: str = ''
     ic_bot_id: int = 2693259
     redis_url: str = 'redis://localhost:6379'
