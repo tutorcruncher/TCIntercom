@@ -55,12 +55,18 @@ class TCIntercomSetup(TestCase):
     Tests for running the web and worker apps, and the setup of the app (settings, logging, etc).
     """
 
+    def setUp(self):
+        os.environ['DYNO'] = ''
+        os.environ['PORT'] = ''
+
+    @mock.patch('tcintercom.run.logger.info')
     @mock.patch('tcintercom.run.uvicorn.run')
-    def test_create_app(self, mock_uvicorn):
+    def test_create_app(self, mock_uvicorn, mock_logger):
         """
         Tests that the app is created correctly when the DYNO starts with web.
         """
         os.environ['DYNO'] = 'web123'
+        os.environ['PORT'] = '8000'
         runner = CliRunner()
         result = runner.invoke(cli, 'auto')
         assert result.exit_code == 0
@@ -69,8 +75,12 @@ class TCIntercomSetup(TestCase):
         assert mock_uvicorn.call_count == 1
         assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
 
+        assert mock_logger.called
+        assert mock_logger.call_args_list[0][0][0] == 'using environment variable DYNO=%r to infer command'
+
+    @mock.patch('tcintercom.run.logger.info')
     @mock.patch('tcintercom.run.uvicorn.run')
-    def test_create_app_with_port(self, mock_uvicorn):
+    def test_create_app_with_port(self, mock_uvicorn, mock_logger):
         """
         Tests that the app is created correctly when only a port is supplied.
         """
@@ -83,18 +93,24 @@ class TCIntercomSetup(TestCase):
         assert mock_uvicorn.call_count == 1
         assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
 
+        assert mock_logger.called
+        assert mock_logger.call_args_list[0][0][0] == 'using environment variable PORT=%s to infer command as web'
+
+    @mock.patch('tcintercom.run.logger.info')
     @mock.patch('tcintercom.run.TCIntercomWorker.run')
-    def test_create_worker(self, mock_worker):
+    def test_create_worker(self, mock_worker, mock_logger):
         """
         Tests that the worker is created correctly.
         """
-        os.environ['DYNO'] = 'worker123'
         runner = CliRunner()
         result = runner.invoke(cli, 'auto')
         assert result.exit_code == 0
 
         assert mock_worker.called
         assert mock_worker.call_count == 1
+
+        assert mock_logger.called
+        assert mock_logger.call_args_list[0][0][0] == 'no environment variable found to infer command, assuming worker'
 
     @mock.patch('tcintercom.app.main.app_settings')
     @mock.patch('tcintercom.app.logs.logfire.configure')
@@ -138,48 +154,54 @@ class TCIntercomSetup(TestCase):
 
 class BasicEndpointsTestCase(TestCase):
     def setUp(self):
-        self.client = TestClient(create_app())
+        self.app = create_app()
+        self.client = TestClient(self.app)
 
     def test_index(self):
         """
         Test the index endpoint returns the correct content.
         """
-        r = self.client.get('/')
+        index_url = self.app.url_path_for('index')
+        r = self.client.get(index_url)
         assert r.content.decode() == '{"message":"TutorCruncher\'s service for managing Intercom is Online"}'
 
     def test_purposeful_error(self):
         """
         Test the purposeful error endpoint raises a RuntimeError.
         """
+        error_url = self.app.url_path_for('error')
         with self.assertRaises(RuntimeError):
-            self.client.get('/error/')
+            self.client.get(error_url)
 
     def test_robots(self):
         """
         Test the endpoint robots.txt returns the correct content.
         """
-        r = self.client.get('/robots.txt')
+        robots_url = self.app.url_path_for('robots')
+        r = self.client.get(robots_url)
         assert r.status_code == 200
         assert b'User-agent: *' in r.content
 
 
 class IntercomCallbackTestCase(TestCase):
     def setUp(self):
-        self.client = TestClient(create_app())
+        self.app = create_app()
+        self.client = TestClient(self.app)
+        self.callback_url = self.app.url_path_for('callback')
 
     def test_no_action_needed(self):
         """
         Test that if no action is needed, we return 'No action required'.
         """
         data = {'data': {'item': {'id': 500}}}
-        r = self.client.post('/callback/', json=data)
+        r = self.client.post(self.callback_url, json=data)
         assert r.json() == {'message': 'No action required'}
 
     def test_callback_invalid_json(self):
         """
         Test that if the JSON is invalid, we return 'Invalid JSON'.
         """
-        r = self.client.post('/callback/', content='{invalid}')
+        r = self.client.post(self.callback_url, content='{invalid}')
         assert r.status_code == 400
         assert r.content.decode() == '{"error":"Invalid JSON"}'
 
@@ -194,7 +216,7 @@ class IntercomCallbackTestCase(TestCase):
             'topic': 'conversation.user.created',
             'data': {'item': {'user': {'id': 123}, 'id': 123}},
         }
-        r = self.client.post('/callback/', json=ic_data)
+        r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'User has no companies'}
 
     @mock.patch('tcintercom.app.views.session.request')
@@ -208,7 +230,7 @@ class IntercomCallbackTestCase(TestCase):
             'topic': 'conversation.user.created',
             'data': {'item': {'user': {'id': 123}, 'id': 123}},
         }
-        r = self.client.post('/callback/', json=ic_data)
+        r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'Reply successfully posted'}
         assert mock_request.call_args_list[-1][1]['json']['body'] == SUPPORT_TEMPLATE
 
@@ -222,7 +244,7 @@ class IntercomCallbackTestCase(TestCase):
             'topic': 'conversation.user.created',
             'data': {'item': {'user': {'id': 123}, 'id': 123}},
         }
-        r = self.client.post('/callback/', json=ic_data)
+        r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'Company has support'}
 
     def test_message_tagged_wrong_tag(self):
@@ -242,7 +264,7 @@ class IntercomCallbackTestCase(TestCase):
                 }
             },
         }
-        r = self.client.post('/callback/', json=ic_data)
+        r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'No action required'}
 
 
@@ -250,7 +272,9 @@ class IntercomCallbackTestCase(TestCase):
 @mock.patch('tcintercom.app.views.conf.netlify_key', 'TESTKEY')
 class BlogCallbackTestCase(TestCase):
     def setUp(self):
-        self.client = TestClient(create_app())
+        self.app = create_app()
+        self.client = TestClient(self.app)
+        self.blog_callback_url = self.app.url_path_for('blog-callback')
 
     @mock.patch('tcintercom.app.views.session.request')
     def test_blog_sub_new_user(self, mock_request):
@@ -262,7 +286,7 @@ class BlogCallbackTestCase(TestCase):
         encoded_jwt = jwt.encode({'some': 'payload'}, conf.netlify_key, algorithm='HS256')
 
         form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
         assert r.json() == {'message': 'Blog subscription added to a new user'}
         assert mock_request.call_args_list[-1][0][0] == 'POST'  # Assert POST request (creating rather than updating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
@@ -277,7 +301,7 @@ class BlogCallbackTestCase(TestCase):
         encoded_jwt = jwt.encode({'some': 'payload'}, conf.netlify_key, algorithm='HS256')
 
         form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
         assert r.json() == {'message': 'Blog subscription added to existing user'}
         assert mock_request.call_args_list[-1][0][0] == 'PUT'  # Assert PUT request (updating rather than creating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
@@ -289,5 +313,5 @@ class BlogCallbackTestCase(TestCase):
         encoded_jwt = jwt.encode({'some': 'payload'}, 'incorrect_key', algorithm='HS256')
 
         form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post('/blog-callback/', json=form_data, headers={'x-webhook-signature': encoded_jwt})
+        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
         assert r.json() == {'error': 'Invalid Signature'}

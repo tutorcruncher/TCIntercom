@@ -4,7 +4,6 @@ import logfire
 import sentry_sdk
 from arq import create_pool
 from fastapi import FastAPI
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from .logs import logfire_setup
@@ -26,9 +25,8 @@ def create_app():
     app.include_router(views_router)
 
     if app_settings.logfire_token:
-        logfire.instrument_fastapi(app)
         logfire_setup('web')
-        FastAPIInstrumentor.instrument_app(app)
+        logfire.instrument_fastapi(app)
 
     if dsn := app_settings.raven_dsn:
         sentry_sdk.init(dsn=dsn)
