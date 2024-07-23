@@ -6,7 +6,7 @@ from logfire import PydanticPlugin
 
 
 def logfire_setup(service_name: str):
-    from tcintercom.app.main import app_settings
+    from .main import app_settings
 
     if not app_settings.testing and (logfire_token := app_settings.logfire_token):
         logfire.configure(

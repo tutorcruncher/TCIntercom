@@ -1,4 +1,3 @@
-import os
 from contextlib import asynccontextmanager
 
 import logfire
@@ -8,9 +7,9 @@ from fastapi import FastAPI
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-from tcintercom.app.logs import logfire_setup
-from tcintercom.app.routers.views import views_router
-from tcintercom.app.settings import Settings
+from .logs import logfire_setup
+from .routers.views import views_router
+from .settings import Settings
 
 app_settings = Settings()
 
@@ -23,7 +22,7 @@ async def lifespan(app):
 
 
 def create_app():
-    app = FastAPI(debug=bool(os.getenv('DEBUG')), lifespan=lifespan)
+    app = FastAPI(lifespan=lifespan)
     app.include_router(views_router)
 
     if app_settings.logfire_token:

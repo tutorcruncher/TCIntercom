@@ -1,6 +1,7 @@
-#!/usr/bin/env python3.11
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import Any
 
 import click
@@ -8,6 +9,9 @@ import logfire
 import uvicorn
 from arq.typing import WorkerSettingsType
 from arq.worker import Worker, get_kwargs
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
 
 from tcintercom.app.logs import logfire_setup, setup_logging
 from tcintercom.app.main import create_app
