@@ -5,11 +5,12 @@ import logfire
 import sentry_sdk
 from arq import create_pool
 from fastapi import FastAPI
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
-from .logs import logfire_setup
-from .routers.views import views_router
-from .settings import Settings
+from tcintercom.app.logs import logfire_setup
+from tcintercom.app.routers.views import views_router
+from tcintercom.app.settings import Settings
 
 app_settings = Settings()
 
@@ -26,10 +27,11 @@ def create_app():
     app.include_router(views_router)
 
     if app_settings.logfire_token:
-        logfire_setup('web')
         logfire.instrument_fastapi(app)
+        logfire_setup('web')
+        FastAPIInstrumentor.instrument_app(app)
 
-    if dsn := os.getenv('RAVEN_DSN'):
+    if dsn := app_settings.raven_dsn:
         sentry_sdk.init(dsn=dsn)
         app.add_middleware(SentryAsgiMiddleware)
     return app

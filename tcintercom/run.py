@@ -9,10 +9,10 @@ import uvicorn
 from arq.typing import WorkerSettingsType
 from arq.worker import Worker, get_kwargs
 
-from .app.logs import logfire_setup, setup_logging
-from .app.main import create_app
-from .app.routers.worker import WorkerSettings
-from .app.settings import Settings
+from tcintercom.app.logs import logfire_setup, setup_logging
+from tcintercom.app.main import create_app
+from tcintercom.app.routers.worker import WorkerSettings
+from tcintercom.app.settings import Settings
 
 logger = logging.getLogger('tc-intercom.run')
 

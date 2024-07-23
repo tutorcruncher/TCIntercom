@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     redis_url: str = 'redis://localhost:6379'
     tc_url: str = 'http://tutorcruncher.com'
     netlify_key: str = ''
+    raven_dsn: str = ''
     logfire_token: str = ''
 
     @property

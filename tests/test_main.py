@@ -1,14 +1,19 @@
+import os
 from datetime import datetime
 from unittest import TestCase, mock
 
 import jwt
 import pytest
+from click.testing import CliRunner
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from requests import RequestException
 
+from tcintercom.app.logs import logfire_setup
 from tcintercom.app.main import create_app
 from tcintercom.app.routers.worker import update_duplicate_contacts
 from tcintercom.app.views import SUPPORT_TEMPLATE, conf
+from tcintercom.run import cli
 
 TEST_CONTACTS = {
     'main_contact': {
@@ -109,6 +114,78 @@ def get_mock_response(test, error=False):
                 raise RequestException('Bad request')
 
     return MockResponse
+
+
+class TCIntercomSetup(TestCase):
+    """
+    Tests for running the web and worker apps, and the setup of the app (settings, logging, etc).
+    """
+
+    @mock.patch('tcintercom.run.uvicorn.run')
+    def test_create_app(self, mock_uvicorn):
+        """
+        Tests that the app is created correctly.
+        """
+        os.environ['DYNO'] = 'web123'
+        runner = CliRunner()
+        result = runner.invoke(cli, 'auto')
+        assert result.exit_code == 0
+
+        assert mock_uvicorn.called
+        assert mock_uvicorn.call_count == 1
+        assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
+
+    @mock.patch('tcintercom.run.TCIntercomWorker.run')
+    def test_create_worker(self, mock_worker):
+        """
+        Tests that the worker is created correctly.
+        """
+        os.environ['DYNO'] = 'worker123'
+        runner = CliRunner()
+        result = runner.invoke(cli, 'auto')
+        assert result.exit_code == 0
+
+        assert mock_worker.called
+        assert mock_worker.call_count == 1
+
+    @mock.patch('tcintercom.app.main.app_settings')
+    @mock.patch('tcintercom.app.logs.logfire.configure')
+    def test_setup_logfire(self, mock_configure, mock_app_settings):
+        """
+        Tests that logfire configure is called under the correct conditions.
+        """
+        mock_app_settings.testing = True
+        mock_app_settings.logfire_token = 'mock_token'
+
+        logfire_setup('test')
+        assert not mock_configure.called
+        assert not mock_configure.call_count
+
+        mock_app_settings.testing = False
+        mock_app_settings.logfire_token = ''
+
+        logfire_setup('test')
+        assert not mock_configure.called
+        assert not mock_configure.call_count
+
+        mock_app_settings.testing = False
+        mock_app_settings.logfire_token = 'mock_token'
+
+        logfire_setup('test')
+        assert mock_configure.called
+        assert mock_configure.call_count == 1
+
+    @mock.patch('tcintercom.app.main.app_settings')
+    @mock.patch('tcintercom.app.main.sentry_sdk.init')
+    def test_setup_sentry_dsn(self, mock_sentry, mock_app_settings):
+        """
+        Tests that sentry is setup correctly.
+        """
+        mock_app_settings.raven_dsn = 'http://foo@sentry.io/123'
+
+        TestClient(create_app())
+        assert mock_sentry.called
+        assert mock_sentry.call_count == 1
 
 
 class BasicEndpointsTestCase(TestCase):

@@ -5,7 +5,7 @@ from .._mark_duplicate import get_relevant_accounts, list_all_contacts, update_d
 
 async def update_duplicate_contacts(ctx):
     """
-    Runs every hour, and updates intercom with the relevant duplicate/not duplicate contacts
+    Updates intercom with the relevant duplicate/not duplicate contacts
     """
     contacts = list_all_contacts()
     mark_duplicate, mark_not_duplicate = get_relevant_accounts(contacts)
