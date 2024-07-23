@@ -12,7 +12,7 @@ def index():
     return {'message': "TutorCruncher's service for managing Intercom is Online"}
 
 
-@views_router.get('/robots.txt')
+@views_router.get('/robots.txt', name='robots')
 async def robots(request: Request):
     return FileResponse(path='tcintercom/robots.txt', media_type='text/plain')
 
