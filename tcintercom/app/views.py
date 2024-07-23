@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional
 
 import jwt
+import logfire
 import requests
 from jwt import InvalidSignatureError
 from starlette.requests import Request
@@ -88,6 +89,7 @@ async def handle_intercom_callback(request: Request):
     item_data = data['data']['item']
     topic = data.get('topic')
     msg = 'No action required'
+    logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
     if topic == 'conversation.user.created':
         msg = await check_support_reply(item_data) or msg
     logger.info({'conversation': item_data.get('id'), 'message': msg})
@@ -109,6 +111,7 @@ async def handle_blog_callback(request: Request):
     q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
     r = await async_intercom_request('/contacts/search', data=q, method='POST')
 
+    logfire.info('Blog callback', data=data)
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
     if r.get('data'):
         await async_intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
