@@ -4,7 +4,9 @@ from unittest import mock
 import pytest
 from requests import RequestException
 
-from tcintercom.app.routers.worker import update_duplicate_contacts
+from tcintercom.app.routers.worker import WorkerSettings, update_duplicate_contacts
+from tcintercom.app.settings import Settings
+from tcintercom.run import create_worker
 
 TEST_CONTACTS = {
     'main_contact': {
@@ -98,7 +100,21 @@ def get_mock_response(test, error=False):
 
 
 @pytest.mark.asyncio
-class TestWorker:
+class TestWorkerJobs:
+    @mock.patch('tcintercom.run.logfire.span')
+    @mock.patch('tcintercom.run.TCIntercomWorker.run')
+    @mock.patch('tcintercom.run.Worker.run_job')
+    async def test_worker_logfire(self, mock_run_job, mock_worker_run, mock_logfire):
+        mock_run_job.return_value = True
+        settings = Settings()
+        worker = create_worker(WorkerSettings, redis_settings=settings.redis_settings, ctx={'settings': settings})
+        assert mock_worker_run.called
+        assert mock_worker_run.call_count == 1
+
+        await worker.run_job('123:test_function:456', 1)
+        assert mock_logfire.call_args_list[0]
+        assert mock_logfire.call_args_list[0][0][0] == 'test_function'
+
     @mock.patch('tcintercom.app.views.session.request')
     async def test_mark_duplicate_contacts(self, mock_request):
         """

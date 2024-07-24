@@ -36,7 +36,7 @@ class SupportTag(str, Enum):
     PHONE_SUPPORT = 'Phone Support'
 
 
-def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
+def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
     """
     Makes a request to Intercom, takes the url, data and method to use when making the request.
     """
@@ -59,7 +59,10 @@ async def async_intercom_request(url: str, data: Optional[dict] = None, method: 
     return intercom_request(url, data, method)
 
 
-async def check_support_reply(item: dict):
+async def check_support_reply(item: dict) -> str:
+    """
+    Checks the support level of the company and the bot replies with the support template if they have no support.
+    """
     user_id = item['user']['id']
     user_data = await async_intercom_request(f'/contacts/{user_id}/')
     companies = user_data.get('companies', {}).get('data')
@@ -81,7 +84,10 @@ async def check_support_reply(item: dict):
         return 'Company has support'
 
 
-async def handle_intercom_callback(request: Request):
+async def handle_intercom_callback(request: Request) -> JSONResponse:
+    """
+    Handles the callback from Intercom and decides what actions to take based on the topic.
+    """
     try:
         data = json.loads(await request.body())
     except ValueError:
@@ -96,7 +102,11 @@ async def handle_intercom_callback(request: Request):
     return JSONResponse({'message': msg})
 
 
-async def handle_blog_callback(request: Request):
+async def handle_blog_callback(request: Request) -> JSONResponse:
+    """
+    Handles the callback from Netlify and updates the user's Intercom profile with the blog subscription custom
+    attribute, if they don't exist then we create a new user in Intercom for that email address.
+    """
     try:
         jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms='HS256')
     except InvalidSignatureError:
