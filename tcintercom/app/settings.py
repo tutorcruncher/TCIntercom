@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     netlify_key: str = ''
     raven_dsn: str = ''
     logfire_token: str = ''
+    log_level: str = 'INFO'
 
     @property
     def redis_settings(self):
