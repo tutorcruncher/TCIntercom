@@ -49,3 +49,7 @@ Optionally you can set up TutorCruncher. All you need to do is in your `_localse
 `IC_SECRET_TOKEN` and the `IC_CLIENT_SECRET`. The `IC_CLIENT_SECRET` token can be found on the `Basic information` tab
 on your app in the developer hub, look out for `Client secret`, and the `IC_SECRET_TOKEN` is the token found under 
 the `Authentication` tab which will be under the `Access token` section.
+
+Then all you need to do is log in and switch to the live branch, head over to Support > Tickets and click `Open a new
+ticket`. Once you submit your ticket, you should see a ticket opened on the `Intercom [TEST]` workspace, a webhook
+for a conversation created should be sent to the web app, and if you have logfire running, the logs sent over logire.
