@@ -8,9 +8,7 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from .logs import logfire_setup
 from .routers.views import views_router
-from .settings import Settings
-
-app_settings = Settings()
+from .settings import app_settings
 
 
 @asynccontextmanager

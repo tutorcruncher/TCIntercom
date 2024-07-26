@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import logging
 from enum import Enum
@@ -10,11 +12,10 @@ from jwt import InvalidSignatureError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from .settings import Settings
+from tcintercom.app.settings import app_settings
 
 logger = logging.getLogger('tc-intercom.views')
 session = requests.Session()
-conf = Settings()
 
 SUPPORT_TEMPLATE = """\
 Thanks for getting in touch 😃
@@ -36,17 +37,30 @@ class SupportTag(str, Enum):
     PHONE_SUPPORT = 'Phone Support'
 
 
+async def validate_ic_webhook_signature(request: Request):
+    """
+    Validates the webhook signature from Intercom.
+
+    https://developers.intercom.com/docs/references/webhooks/webhook-models#signed-notifications
+    """
+    if app_settings.testing:
+        return
+    header_signature = request.headers['x-hub-signature']
+    payload = await request.body()
+    assert f'sha1={hmac.new(app_settings.ic_secret.encode(), payload, hashlib.sha1).hexdigest()}' == header_signature
+
+
 def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
     """
     Makes a request to Intercom, takes the url, data and method to use when making the request.
     """
     data = data or {}
     headers = {
-        'Authorization': 'Bearer ' + conf.ic_token,
+        'Authorization': 'Bearer ' + app_settings.ic_token,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
-    if not (method == 'POST' and not conf.ic_token):
+    if not (method == 'POST' and not app_settings.ic_token):
         r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
         r.raise_for_status()
         return r.json()
@@ -74,9 +88,9 @@ async def check_support_reply(item: dict) -> str:
         reply_data = {
             'type': 'admin',
             'message_type': 'comment',
-            'admin_id': conf.ic_bot_id,
+            'admin_id': app_settings.ic_bot_id,
             'body': SUPPORT_TEMPLATE,
-            'assignee': conf.ic_bot_id,
+            'assignee': app_settings.ic_bot_id,
         }
         await async_intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
         return 'Reply successfully posted'
@@ -88,12 +102,13 @@ async def handle_intercom_callback(request: Request) -> JSONResponse:
     """
     Handles the callback from Intercom and decides what actions to take based on the topic.
     """
+    await validate_ic_webhook_signature(request)
     try:
         data = json.loads(await request.body())
     except ValueError:
         return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-    item_data = data['data']['item']
-    topic = data.get('topic')
+    item_data = data.get('data', {}).get('item', {})
+    topic = data.get('topic', None)
     msg = 'No action required'
     logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
     if topic == 'conversation.user.created':
@@ -108,7 +123,7 @@ async def handle_blog_callback(request: Request) -> JSONResponse:
     attribute, if they don't exist then we create a new user in Intercom for that email address.
     """
     try:
-        jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms='HS256')
+        jwt.decode(request.headers['x-webhook-signature'], app_settings.netlify_key, algorithms='HS256')
     except InvalidSignatureError:
         return JSONResponse({'error': 'Invalid Signature'}, status_code=400)
 

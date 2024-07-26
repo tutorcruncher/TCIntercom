@@ -1,6 +1,6 @@
 import pytest
 
-from tcintercom.app.main import app_settings
+from tcintercom.app.settings import app_settings
 
 
 @pytest.fixture(scope='module', autouse=True)

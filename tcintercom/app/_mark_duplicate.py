@@ -1,7 +1,10 @@
+import logging
 import time
 from typing import Optional
 
 from .views import intercom_request
+
+logger = logging.getLogger('tc-intercom.mark_duplicate')
 
 
 class DuplicateContactChecks:
@@ -99,6 +102,7 @@ def update_duplicate_custom_attribute(contacts_to_update: list, mark_duplicate: 
     """
     Takes a list of contacts and depending on what mark duplicate is, marks them as a duplicate or not a duplicate.
     """
+    updated = 0
     for contact in contacts_to_update:
         if contact['custom_attributes'].get('is_duplicate') != mark_duplicate:
             url = f'/contacts/{contact["id"]}'
@@ -108,3 +112,5 @@ def update_duplicate_custom_attribute(contacts_to_update: list, mark_duplicate: 
                 'custom_attributes': {'is_duplicate': mark_duplicate},
             }
             intercom_request(url, method='PUT', data=data)
+            updated += 1
+    logger.info(f'Updated {updated} contacts to {"duplicate" if mark_duplicate else "not duplicate"}')
