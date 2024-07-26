@@ -155,6 +155,19 @@ class TCIntercomSetup(TestCase):
         assert mock_sentry.called
         assert mock_sentry.call_count == 1
 
+    def test_lifespan_setup(self):
+        """
+        Tests that the lifespan context manager sets up the app correctly. We have to use with TestClient to test
+        this.
+
+        https://stackoverflow.com/questions/75714883/how-to-test-a-fastapi-endpoint-that-uses-lifespan-function
+        """
+        app = create_app()
+        index_url = app.url_path_for('index')
+        with TestClient(app) as client:
+            response = client.get(index_url)
+            assert response.status_code == 200
+
 
 class BasicEndpointsTestCase(TestCase):
     def setUp(self):
@@ -224,6 +237,9 @@ class IntercomCallbackTestCase(TestCase):
     @mock.patch('tcintercom.app.settings.app_settings.testing', False)
     @mock.patch('tcintercom.app.settings.app_settings.ic_secret', 'TESTKEY')
     def test_validated_webhook_sig(self):
+        """
+        Tests that the webhook signature is valid and from Intercom.
+        """
         test_secret_key = 'TESTKEY'
         data = {'data': {'item': {'id': 500}}}
         signature = f'sha1={hmac.new(test_secret_key.encode(), json.dumps(data).encode(), hashlib.sha1).hexdigest()}'
@@ -233,6 +249,9 @@ class IntercomCallbackTestCase(TestCase):
         )
         assert r.status_code == 200
         assert r.json() == {'message': 'No action required'}
+
+        with self.assertRaises(AssertionError):
+            self.client.post(self.callback_url, json={}, headers={'X-Hub-Signature': 'invalid_signature'})
 
     def test_callback_invalid_json(self):
         """
