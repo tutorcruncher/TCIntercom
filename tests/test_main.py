@@ -31,6 +31,7 @@ def get_mock_response(test, error=False):
                 'no_companies': {'companies': {'type': 'list', 'data': []}},
                 'blog_new_user': {'data': []},
                 'blog_existing_user': {'data': [{'id': 123}]},
+                'blog_invalid_json': '{Invalid JSON}',
             }
 
         def json(self):
@@ -81,6 +82,19 @@ class TCIntercomSetup(TestCase):
 
         assert mock_logger.called
         assert mock_logger.call_args_list[0][0][0] == 'using environment variable DYNO=%r to infer command'
+
+    @mock.patch('tcintercom.run.TCIntercomWorker.run')
+    def test_dyno_but_not_web(self, mock_worker):
+        """
+        Tests the scenario where the DYNO env variable exists but does not start with web.
+        """
+        os.environ['DYNO'] = 'worker123'
+        runner = CliRunner()
+        result = runner.invoke(cli, 'auto')
+        assert result.exit_code == 0
+
+        assert mock_worker.called
+        assert mock_worker.call_count == 1
 
     @mock.patch('tcintercom.run.logger.info')
     @mock.patch('tcintercom.run.uvicorn.run')
@@ -369,6 +383,18 @@ class BlogCallbackTestCase(TestCase):
         assert r.json() == {'message': 'Blog subscription added to existing user'}
         assert mock_request.call_args_list[-1][0][0] == 'PUT'  # Assert PUT request (updating rather than creating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
+
+    @mock.patch('tcintercom.app.views.jwt.decode')
+    def test_blog_callback_invalid_json(self, mock_decode):
+        """
+        Test that if the JSON is invalid, we return 'Invalid JSON'. Mocking jwt decode so that it passes and
+        doesn't fail earlier in the function.
+        """
+        r = self.client.post(
+            self.blog_callback_url, content='{Invalid JSON}', headers={'x-webhook-signature': 'invalid'}
+        )
+        assert r.status_code == 400
+        assert r.content.decode() == '{"error":"Invalid JSON"}'
 
     def test_incorrect_key(self):
         """
