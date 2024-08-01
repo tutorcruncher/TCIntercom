@@ -42,7 +42,7 @@ def create_worker(settings_cls: WorkerSettingsType, **kwargs: Any) -> TCIntercom
 
 
 @click.group()
-@click.option('-v', '--verbose', is_flag=True)
+@click.option('-v', '--verbose', is_flag=True, envvar='VERBOSE')
 def cli(verbose):
     setup_logging(verbose)
 
