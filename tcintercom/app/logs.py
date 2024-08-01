@@ -23,7 +23,7 @@ def setup_logging(verbose: bool = False):
     """
     from .main import app_settings
 
-    log_level = verbose or app_settings.log_level
+    log_level = 'DEBUG' if verbose else app_settings.log_level
     config = {
         'version': 1,
         'disable_existing_loggers': False,
