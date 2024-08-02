@@ -1,4 +1,0 @@
-build:
-  docker:
-    web: tcintercom/Dockerfile
-    worker: tcintercom/Dockerfile

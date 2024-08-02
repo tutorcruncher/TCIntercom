@@ -1,10 +1,9 @@
 import pytest
-from starlette.testclient import TestClient
 
-from tcintercom.app.main import create_app
+from tcintercom.app.settings import app_settings
 
 
-@pytest.fixture
-def client():
-    with TestClient(create_app()) as client:
-        yield client
+@pytest.fixture(scope='module', autouse=True)
+def initialize_tests(request):
+    app_settings.testing = True
+    return app_settings
