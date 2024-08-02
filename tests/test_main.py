@@ -296,6 +296,20 @@ class IntercomCallbackTestCase(TestCase):
         r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'Company has support'}
 
+    @mock.patch('tcintercom.app.views.session.request')
+    def test_conv_created_new_apps(self, mock_request):
+        """
+        Our current apps are old and use the User on the webhook, since then Intercom have changed this so any newly
+        created apps use contact. This is a test for if we switch to the new style, it won't break anything.
+        """
+        mock_request.side_effect = get_mock_response('has_support')
+        ic_data = {
+            'topic': 'conversation.user.created',
+            'data': {'item': {'contacts': {'contacts': [{'id': 123}]}}},
+        }
+        r = self.client.post(self.callback_url, json=ic_data)
+        assert r.json() == {'message': 'Company has support'}
+
     def test_message_tagged_wrong_tag(self):
         """
         Test that if a tag is applied that we don't want to act on, we return 'No action required'.
