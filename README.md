@@ -1,28 +1,46 @@
 # TC Intercom
 
-A simple web app built with FastAPI to deal with Intercom webhooks.
+A simple web app built with FastAPI to deal with Intercom webhooks; and has a job that runs periodically that handles 
+and updates intercom duplicates.
 
 ### Running the web app
-To run the web app, you first need to export the environment variable 'DYNO' to something that starts with 'web', 
-for example:
+To run the web app, you can call either of the following commands:
 
 ```bash
-export DYNO=web123
+make web
 ```
 
-Then you can call the following command to run the web app:
+OR
 
 ```bash
-python tc_intercom/run.py auto
+python tcintercom/run.py auto
 ```
 
 ### Running the worker
-To run the worker, we don't need to set an environment variable and can just call the following command:
+To run the worker, you can call either of the following commands:
 
 ```bash
-python tc_intercom/run.py auto
+make worker
 ```
 
+OR
+
+```bash
+python tcintercom/run.py worker
+```
+
+### Setting up keys locally
+
+To set up keys locally, you'll need to head over to the 
+[intercom developer hub](https://app.intercom.com/a/apps/u6r3i73k/developer-hub) and either set up a new app or use
+an existing one, making sure the workspace for either option is `TutorCruncher [TEST]`.
+
+Then click on the app (either the one you've chosen or the one you created), and now we need to set up a `.env` file to 
+store the environment variables. Create this file in the TCIntercom directory. The secrets you'll need to start off are 
+the `ic_secret_token` and `ic_client_secret`. Later any other environment variables can be added such as your 
+`logfire_token` etc. You can get the `ic_secret_token` by heading over to the `Authentication` tab and copying the 
+`Access token`. The `ic_client_secret` can be found under the `Basic information` tab, and you'll want the key 
+labelled `Client secret`.
 
 ### Receiving webhooks from Intercom
 To actually start receiving webhooks from intercom, there are two steps that need to be done. The first is to call
@@ -32,17 +50,18 @@ ngrok for the port that the web app is running on, for example:
 ngrok http 8000
 ```
 
-For the second step, you will need to head over to the intercom developer hub and either set up a new app, or use an
-old one that is already there, making sure the workspace for either option is `TutorCruncher [TEST]`. Then click on 
-the app, and on the left hand side click on 'Webhooks'. From there you should see in the top right, a button that says
-`Edit` which allows you to change the `Endpoint URL`, set this endpoint url to your ngrok url ending with /callback/ 
-and click save. An example endpoint url could be: `http://1234abcd.ngrok-free.app/callback/`.
+Now that we've done that, head over to the 'Webhooks' tab on the intercom app. From there you should see in the top 
+right, a button that says `Edit` which allows you to change the `Endpoint URL`, set this endpoint url to your ngrok 
+url ending with /callback/ and click save. An example endpoint url could be: 
+`http://1234abcd.ngrok-free.app/callback/`.
 
 To confirm that everything is set up correctly, you can click the `Send a test request` button, and you should see a
 response in the ngrok terminal and the terminal that the web app is running on.
 
 You can select which webhooks this app will send out at the bottom of the page. These topics are all the different
-webhooks that can be sent.
+webhooks that can be sent. You can add the ones you want to receive by clicking `Edit` in the top right of the page and
+then scrolling down to the dropdown and selecting the ones you want. Currently at the time of writing, the only webhook
+we handle is `conversation.contact.created`, the others we process and log a `No action required`.
 
 ### Setting up TutorCruncher
 Optionally you can set up TutorCruncher. All you need to do is in your `_localsettings.py` file, add the 

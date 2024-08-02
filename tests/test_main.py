@@ -1,11 +1,9 @@
 import hashlib
 import hmac
 import json
-import os
 from unittest import TestCase, mock
 
 import jwt
-from click.testing import CliRunner
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from requests import RequestException
@@ -14,7 +12,7 @@ from tcintercom.app.logs import logfire_setup
 from tcintercom.app.main import create_app
 from tcintercom.app.settings import app_settings
 from tcintercom.app.views import SUPPORT_TEMPLATE
-from tcintercom.run import cli
+from tcintercom.run import main
 
 
 def get_mock_response(test, error=False):
@@ -60,75 +58,39 @@ class TCIntercomSetup(TestCase):
     Tests for running the web and worker apps, and the setup of the app (settings, logging, etc).
     """
 
-    def setUp(self):
-        os.environ['DYNO'] = ''
-        os.environ['PORT'] = ''
-
-    @mock.patch('tcintercom.run.logger.info')
     @mock.patch('tcintercom.run.uvicorn.run')
-    def test_create_app(self, mock_uvicorn, mock_logger):
+    @mock.patch('sys.argv', ['run.py', 'web'])
+    def test_create_app(self, mock_uvicorn):
         """
         Tests that the app is created correctly when the DYNO starts with web.
         """
-        os.environ['DYNO'] = 'web123'
-        os.environ['PORT'] = '8000'
-        runner = CliRunner()
-        result = runner.invoke(cli, 'auto')
-        assert result.exit_code == 0
+        main()
 
         assert mock_uvicorn.called
         assert mock_uvicorn.call_count == 1
         assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
 
-        assert mock_logger.called
-        assert mock_logger.call_args_list[0][0][0] == 'using environment variable DYNO=%r to infer command'
-
     @mock.patch('tcintercom.run.TCIntercomWorker.run')
-    def test_dyno_but_not_web(self, mock_worker):
+    @mock.patch('sys.argv', ['run.py', 'worker'])
+    def test_create_worker(self, mock_worker):
         """
         Tests the scenario where the DYNO env variable exists but does not start with web.
         """
-        os.environ['DYNO'] = 'worker123'
-        runner = CliRunner()
-        result = runner.invoke(cli, 'auto')
-        assert result.exit_code == 0
+        main()
 
         assert mock_worker.called
         assert mock_worker.call_count == 1
 
-    @mock.patch('tcintercom.run.logger.info')
-    @mock.patch('tcintercom.run.uvicorn.run')
-    def test_create_app_with_port(self, mock_uvicorn, mock_logger):
+    @mock.patch('tcintercom.run.logger.error')
+    @mock.patch('sys.argv', ['run.py', 'test'])
+    def test_create_with_nothing_specified(self, mock_logger):
         """
-        Tests that the app is created correctly when only a port is supplied.
+        Tests calling the main function with invalid arguments.
         """
-        os.environ['PORT'] = '8000'
-        runner = CliRunner()
-        result = runner.invoke(cli, 'auto')
-        assert result.exit_code == 0
-
-        assert mock_uvicorn.called
-        assert mock_uvicorn.call_count == 1
-        assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
+        main()
 
         assert mock_logger.called
-        assert mock_logger.call_args_list[0][0][0] == 'using environment variable PORT=%s to infer command as web'
-
-    @mock.patch('tcintercom.run.logger.info')
-    @mock.patch('tcintercom.run.TCIntercomWorker.run')
-    def test_create_worker(self, mock_worker, mock_logger):
-        """
-        Tests that the worker is created correctly.
-        """
-        runner = CliRunner()
-        result = runner.invoke(cli, 'auto')
-        assert result.exit_code == 0
-
-        assert mock_worker.called
-        assert mock_worker.call_count == 1
-
-        assert mock_logger.called
-        assert mock_logger.call_args_list[0][0][0] == 'no environment variable found to infer command, assuming worker'
+        assert 'Invalid command test' in mock_logger.call_args_list[-1][0][0]
 
     @mock.patch('tcintercom.app.main.app_settings')
     @mock.patch('tcintercom.app.logs.logfire.configure')
@@ -249,7 +211,7 @@ class IntercomCallbackTestCase(TestCase):
         assert r.content.decode() == '{"detail":"Method Not Allowed"}'
 
     @mock.patch('tcintercom.app.settings.app_settings.testing', False)
-    @mock.patch('tcintercom.app.settings.app_settings.ic_secret', 'TESTKEY')
+    @mock.patch('tcintercom.app.settings.app_settings.ic_client_secret', 'TESTKEY')
     def test_validated_webhook_sig(self):
         """
         Tests that the webhook signature is valid and from Intercom.
@@ -290,7 +252,7 @@ class IntercomCallbackTestCase(TestCase):
         assert r.json() == {'message': 'User has no companies'}
 
     @mock.patch('tcintercom.app.views.session.request')
-    @mock.patch('tcintercom.app.settings.app_settings.ic_token', 'TESTKEY')
+    @mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
     def test_conv_created_no_support(self, mock_request):
         """
         Test that if a user has no support, the bot posts the SUPPORT_TEMPLATE reply to the conversation.
@@ -338,7 +300,7 @@ class IntercomCallbackTestCase(TestCase):
         assert r.json() == {'message': 'No action required'}
 
 
-@mock.patch('tcintercom.app.settings.app_settings.ic_token', 'TESTKEY')
+@mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
 @mock.patch('tcintercom.app.settings.app_settings.netlify_key', 'TESTKEY')
 class BlogCallbackTestCase(TestCase):
     def setUp(self):

@@ -17,13 +17,13 @@ def logfire_setup(service_name: str):
         )
 
 
-def setup_logging(verbose: bool = False):
+def setup_logging():
     """
     setup logging config by updating the arq logging config
     """
     from .main import app_settings
 
-    log_level = 'DEBUG' if verbose else app_settings.log_level
+    log_level = app_settings.log_level
     config = {
         'version': 1,
         'disable_existing_loggers': False,

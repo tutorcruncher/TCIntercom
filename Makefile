@@ -1,6 +1,7 @@
 .PHONY: install
 install:
 	pip install -r requirements.txt
+	pip install devtools
 
 .PHONY: test
 test:
@@ -16,3 +17,10 @@ lint:
 	ruff check .
 	ruff format --check .
 
+.PHONY: web
+web:
+	python3 tcintercom/run.py web
+
+.PHONY: worker
+worker:
+	python3 tcintercom/run.py worker

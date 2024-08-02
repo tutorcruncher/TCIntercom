@@ -47,7 +47,10 @@ async def validate_ic_webhook_signature(request: Request):
         return
     header_signature = request.headers.get('x-hub-signature', '')
     payload = await request.body()
-    assert f'sha1={hmac.new(app_settings.ic_secret.encode(), payload, hashlib.sha1).hexdigest()}' == header_signature
+    assert (
+        f'sha1={hmac.new(app_settings.ic_client_secret.encode(), payload, hashlib.sha1).hexdigest()}'
+        == header_signature
+    ), 'Unable to validate signature.'
 
 
 def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
@@ -56,13 +59,17 @@ def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET')
     """
     data = data or {}
     headers = {
-        'Authorization': 'Bearer ' + app_settings.ic_token,
+        'Authorization': 'Bearer ' + app_settings.ic_secret_token,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
-    if not (method == 'POST' and not app_settings.ic_token):
-        r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
-        r.raise_for_status()
+    if not (method == 'POST' and not app_settings.ic_secret_token):
+        try:
+            r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
+            r.raise_for_status()
+        except Exception as e:
+            logger.exception(e)
+            raise e
         return r.json()
 
 
@@ -77,7 +84,12 @@ async def check_support_reply(item: dict) -> str:
     """
     Checks the support level of the company and the bot replies with the support template if they have no support.
     """
-    user_id = item['user']['id']
+    if item.get('user'):
+        # This is for the old apps we have that still have User added to their webhooks.
+        user_id = item['user']['id']
+    else:
+        # This is for the newer apps that use contacts instead of user.
+        user_id = item['contacts']['contacts'][0]['id']
     user_data = await async_intercom_request(f'/contacts/{user_id}/')
     companies = user_data.get('companies', {}).get('data')
     if not companies:
@@ -113,7 +125,7 @@ async def handle_intercom_callback(request: Request) -> JSONResponse:
     logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
     if topic == 'conversation.user.created':
         msg = await check_support_reply(item_data) or msg
-    logger.info({'conversation': item_data.get('id'), 'message': msg})
+    logger.info(f"Conversation ID: {item_data.get('id')} - {msg}")
     return JSONResponse({'message': msg})
 
 
