@@ -214,6 +214,9 @@ class IntercomCallbackTestCase(TestCase):
     @mock.patch('tcintercom.app.views.session.request')
     @mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
     def test_invalid_intercom_request(self, mock_request, mock_logger):
+        """
+        Tests that if the request to intercom is invalid, we log the exception and raise it.
+        """
         mock_request.side_effect = get_mock_response('no_support', error=True)
         ic_data = {
             'topic': 'conversation.user.created',
