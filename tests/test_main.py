@@ -210,6 +210,20 @@ class IntercomCallbackTestCase(TestCase):
         assert r.status_code == 405
         assert r.content.decode() == '{"detail":"Method Not Allowed"}'
 
+    @mock.patch('tcintercom.app.views.logger.exception')
+    @mock.patch('tcintercom.app.views.session.request')
+    @mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
+    def test_invalid_intercom_request(self, mock_request, mock_logger):
+        mock_request.side_effect = get_mock_response('no_support', error=True)
+        ic_data = {
+            'topic': 'conversation.user.created',
+            'data': {'item': {'user': {'id': 123}, 'id': 123}},
+        }
+        with self.assertRaises(RequestException):
+            self.client.post(self.callback_url, json=ic_data)
+
+        assert mock_logger.called
+
     @mock.patch('tcintercom.app.settings.app_settings.testing', False)
     @mock.patch('tcintercom.app.settings.app_settings.ic_client_secret', 'TESTKEY')
     def test_validated_webhook_sig(self):
