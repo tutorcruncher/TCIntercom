@@ -9,4 +9,4 @@ PyJWT==2.9.0
 requests==2.32.3
 sentry_sdk==2.13.0
 starlette==0.38.3
-uvicorn==0.30.6
+uvicorn==0.31.0
