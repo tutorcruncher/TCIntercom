@@ -16,17 +16,11 @@ OR
 python tcintercom/run.py auto
 ```
 
-### Running the worker
-To run the worker, you can call either of the following commands:
+### Running jobs
+On Render, we have CRON jobs setup which run every so often. These jobs take a command to run, for example
 
 ```bash
-make worker
-```
-
-OR
-
-```bash
-python tcintercom/run.py worker
+python tcintercom/app/cron_job.py 
 ```
 
 ### Setting up keys locally
