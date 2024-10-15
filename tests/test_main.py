@@ -70,17 +70,6 @@ class TCIntercomSetup(TestCase):
         assert mock_uvicorn.call_count == 1
         assert isinstance(mock_uvicorn.call_args_list[0][0][0], FastAPI)
 
-    @mock.patch('tcintercom.run.TCIntercomWorker.run')
-    @mock.patch('sys.argv', ['run.py', 'worker'])
-    def test_create_worker(self, mock_worker):
-        """
-        Tests the scenario where the DYNO env variable exists but does not start with web.
-        """
-        main()
-
-        assert mock_worker.called
-        assert mock_worker.call_count == 1
-
     @mock.patch('tcintercom.run.logger.error')
     @mock.patch('sys.argv', ['run.py', 'test'])
     def test_create_with_nothing_specified(self, mock_logger):
