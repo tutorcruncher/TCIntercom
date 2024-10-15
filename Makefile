@@ -20,7 +20,3 @@ lint:
 .PHONY: web
 web:
 	python3 tcintercom/run.py web
-
-.PHONY: worker
-worker:
-	python3 tcintercom/run.py worker

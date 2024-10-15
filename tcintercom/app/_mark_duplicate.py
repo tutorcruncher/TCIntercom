@@ -2,7 +2,7 @@ import logging
 import time
 from typing import Optional
 
-from .views import intercom_request
+from tcintercom.app.views import intercom_request
 
 logger = logging.getLogger('tc-intercom.mark_duplicate')
 

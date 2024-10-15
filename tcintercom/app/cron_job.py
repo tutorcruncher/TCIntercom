@@ -1,9 +1,13 @@
-from arq import cron
+import sys
+from pathlib import Path
 
-from .._mark_duplicate import get_relevant_accounts, list_all_contacts, update_duplicate_custom_attribute
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(project_root))
+
+from tcintercom.app._mark_duplicate import get_relevant_accounts, list_all_contacts, update_duplicate_custom_attribute
 
 
-async def update_duplicate_contacts(ctx):
+def update_duplicate_contacts():
     """
     Updates intercom with the relevant duplicate/not duplicate contacts
     """
@@ -13,5 +17,5 @@ async def update_duplicate_contacts(ctx):
     update_duplicate_custom_attribute(contacts_to_update=mark_not_duplicate, mark_duplicate=False)
 
 
-class WorkerSettings:
-    cron_jobs = [cron(update_duplicate_contacts, hour=1, timeout=600)]
+if __name__ == '__main__':
+    update_duplicate_contacts()

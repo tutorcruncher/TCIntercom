@@ -1,12 +1,9 @@
 from datetime import datetime
 from unittest import mock
 
-import pytest
 from requests import RequestException
 
-from tcintercom.app.routers.worker import WorkerSettings, update_duplicate_contacts
-from tcintercom.app.settings import Settings
-from tcintercom.run import create_worker
+from tcintercom.app.cron_job import update_duplicate_contacts
 
 TEST_CONTACTS = {
     'main_contact': {
@@ -99,29 +96,14 @@ def get_mock_response(test, error=False):
     return MockResponse
 
 
-@pytest.mark.asyncio
 class TestWorkerJobs:
-    @mock.patch('tcintercom.run.logfire.span')
-    @mock.patch('tcintercom.run.TCIntercomWorker.run')
-    @mock.patch('tcintercom.run.Worker.run_job')
-    async def test_worker_logfire(self, mock_run_job, mock_worker_run, mock_logfire):
-        mock_run_job.return_value = True
-        settings = Settings()
-        worker = create_worker(WorkerSettings, redis_settings=settings.redis_settings, ctx={'settings': settings})
-        assert mock_worker_run.called
-        assert mock_worker_run.call_count == 1
-
-        await worker.run_job('123:test_function:456', 1)
-        assert mock_logfire.call_args_list[0]
-        assert mock_logfire.call_args_list[0][0][0] == 'test_function'
-
     @mock.patch('tcintercom.app.views.session.request')
-    async def test_mark_duplicate_contacts(self, mock_request):
+    def test_mark_duplicate_contacts(self, mock_request):
         """
         Tests that the correct contacts are marked as duplicate.
         """
         mock_request.side_effect = get_mock_response('duplicate_contacts_basic')
-        await update_duplicate_contacts({})
+        update_duplicate_contacts()
 
         dup_contact = TEST_CONTACTS['not_marked_duplicate_contact']
         assert mock_request.call_args_list[-1][0][0] == 'PUT'
@@ -133,23 +115,23 @@ class TestWorkerJobs:
         )
 
     @mock.patch('tcintercom.app.views.session.request')
-    async def test_more_recent_not_duplicate_contact(self, mock_request):
+    def test_more_recent_not_duplicate_contact(self, mock_request):
         """
         Tests that a more recent contact with the same email isn't incorrectly marked as duplicate due to the order
         the contacts list is in. We assert this by checking that no calls are made to update contacts are made as they
         are already in their correct state.
         """
         mock_request.side_effect = get_mock_response('more_recent_not_duplicate_contact')
-        await update_duplicate_contacts({})
+        update_duplicate_contacts()
         assert mock_request.call_args_list[-1][0][0] == 'GET'
 
     @mock.patch('tcintercom.app.views.session.request')
-    async def test_more_recently_active_contact(self, mock_request):
+    def test_more_recently_active_contact(self, mock_request):
         """
         Tests that the contact who was more recently active is not marked as the duplicate contact.
         """
         mock_request.side_effect = get_mock_response('more_recently_active_duplicate_contact')
-        await update_duplicate_contacts({})
+        update_duplicate_contacts()
 
         dup_contact = TEST_CONTACTS['not_marked_duplicate_contact']
         assert mock_request.call_args_list[-1][0][0] == 'PUT'
@@ -161,13 +143,13 @@ class TestWorkerJobs:
         )
 
     @mock.patch('tcintercom.app.views.session.request')
-    async def test_most_recent_created_at_contact(self, mock_request):
+    def test_most_recent_created_at_contact(self, mock_request):
         """
         Tests that a contact that a contact that was created at a later date than the original contact, gets
         marked as the duplicate contact. Also tests the pagination of the contacts list.
         """
         mock_request.side_effect = get_mock_response('most_recent_created_at_duplicate_contact')
-        await update_duplicate_contacts({})
+        update_duplicate_contacts()
 
         main_contact = TEST_CONTACTS['main_contact']
         assert mock_request.call_args_list[-2][0][0] == 'GET'
@@ -186,13 +168,13 @@ class TestWorkerJobs:
         )
 
     @mock.patch('tcintercom.app.views.session.request')
-    async def test_mark_not_duplicate_contacts(self, mock_request):
+    def test_mark_not_duplicate_contacts(self, mock_request):
         """
         Tests that if there is only one contact with that email address and they are marked as a duplicate,
         we update them to be marked as not duplicate.
         """
         mock_request.side_effect = get_mock_response('mark_not_duplicate_contact')
-        await update_duplicate_contacts({})
+        update_duplicate_contacts()
 
         dup_contact = TEST_CONTACTS['marked_duplicate_contact']
         assert mock_request.call_args_list[-1][0][0] == 'PUT'
