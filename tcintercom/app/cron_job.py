@@ -31,4 +31,4 @@ def update_duplicate_contacts():
 
 
 if __name__ == '__main__':
-    update_duplicate_contacts()
+    update_duplicate_contacts()  # pragma: no cover
