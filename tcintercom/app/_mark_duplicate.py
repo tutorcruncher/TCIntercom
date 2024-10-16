@@ -1,5 +1,6 @@
 import logging
 import time
+from functools import cached_property
 from typing import Optional
 
 import logfire
@@ -17,12 +18,14 @@ class DuplicateContactChecks:
         self.last_seen_at = contact.get('last_seen_at')
         self.is_duplicate = contact.get('custom_attributes', {}).get('is_duplicate')
 
+    @cached_property
     def check_new_contact(self) -> bool:
         """
         Checks if this is the first time seeing the contact, add it to the dictionary of unique contacts
         """
         return not bool(self.keep_contact)
 
+    @cached_property
     def check_more_recent_not_duplicate(self) -> bool:
         """
         Checks if the contact in keep_contacts is a duplicate but the most recent contact we're processing is not
@@ -31,6 +34,7 @@ class DuplicateContactChecks:
             self.keep_contact and self.keep_contact['custom_attributes'].get('is_duplicate') and not self.is_duplicate
         )
 
+    @cached_property
     def check_more_recently_active(self) -> bool:
         """
         Checks if the new contact is more recently active than the contact in keep_contacts
@@ -42,6 +46,7 @@ class DuplicateContactChecks:
             and self.keep_contact['last_seen_at'] < self.last_seen_at
         )
 
+    @cached_property
     def check_created_at(self) -> bool:
         """
         Checks if the new contact was created more recently than the contact in keep_contacts
@@ -82,15 +87,15 @@ def get_relevant_accounts(recently_active: list) -> tuple[list, list]:
         email = contact['email']
         keep_contact = keep_contacts.get(email)
         contact_checks = DuplicateContactChecks(contact=contact, keep_contact=keep_contact)
-        if contact_checks.check_new_contact():
+        if contact_checks.check_new_contact:
             keep_contacts[email] = contact
-        elif contact_checks.check_more_recent_not_duplicate():
+        elif contact_checks.check_more_recent_not_duplicate:
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
-        elif contact_checks.check_more_recently_active():
+        elif contact_checks.check_more_recently_active:
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
-        elif contact_checks.check_created_at():
+        elif contact_checks.check_created_at:
             mark_dupe_contacts.append(keep_contacts[email])
             keep_contacts[email] = contact
         else:
