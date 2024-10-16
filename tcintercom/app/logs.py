@@ -4,7 +4,7 @@ import logfire
 from logfire import PydanticPlugin
 
 
-def logfire_setup(service_name: str):
+def logfire_setup(service_name: str, console: bool = False):
     from .main import app_settings
 
     if not app_settings.testing and (logfire_token := app_settings.logfire_token):
@@ -13,7 +13,7 @@ def logfire_setup(service_name: str):
             send_to_logfire=True,
             token=logfire_token,
             pydantic_plugin=PydanticPlugin(record='all'),
-            console=False,
+            console=console,
         )
 
 

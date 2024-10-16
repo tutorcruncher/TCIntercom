@@ -16,7 +16,7 @@ def update_duplicate_contacts():
     """
     Updates intercom with the relevant duplicate/not duplicate contacts
     """
-    logfire_setup('cron-job')
+    logfire_setup(service_name='cron-job', console=True)
     with logfire.span('Updating duplicate/not duplicate contacts.'):
         contacts = list_all_contacts()
         logfire.info('Found {contacts} contacts.', contacts=len(contacts))
