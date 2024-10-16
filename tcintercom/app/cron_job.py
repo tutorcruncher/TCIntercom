@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import logfire
+from logfire import ConsoleOptions
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
@@ -16,7 +17,13 @@ def update_duplicate_contacts():
     """
     Updates intercom with the relevant duplicate/not duplicate contacts
     """
-    logfire_setup(service_name='cron-job', console=True)
+    console_options = ConsoleOptions(
+        colors='auto',
+        include_timestamps=True,
+        verbose=False,
+        min_log_level='info',
+    )
+    logfire_setup(service_name='cron-job', console=console_options)
     with logfire.span('Updating duplicate/not duplicate contacts.'):
         contacts = list_all_contacts()
         logfire.info('Found {contacts} contacts.', contacts=len(contacts))
