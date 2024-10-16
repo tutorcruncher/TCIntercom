@@ -125,7 +125,7 @@ async def handle_intercom_callback(request: Request) -> JSONResponse:
     logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
     if topic == 'conversation.user.created':
         msg = await check_support_reply(item_data) or msg
-    logger.info(f"Conversation ID: {item_data.get('id')} - {msg}")
+    logger.info('Conversation ID: {id} - {msg}'.format(id=item_data.get('id'), msg=msg))
     return JSONResponse({'message': msg})
 
 

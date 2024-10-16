@@ -2,6 +2,8 @@ import logging
 import time
 from typing import Optional
 
+import logfire
+
 from tcintercom.app.views import intercom_request
 
 logger = logging.getLogger('tc-intercom.mark_duplicate')
@@ -113,4 +115,8 @@ def update_duplicate_custom_attribute(contacts_to_update: list, mark_duplicate: 
             }
             intercom_request(url, method='PUT', data=data)
             updated += 1
-    logger.info(f'Updated {updated} contacts to {"duplicate" if mark_duplicate else "not duplicate"}')
+    logfire.info(
+        'Updated {updated} contacts to {duplicate}',
+        updated=updated,
+        duplicate='duplicate' if mark_duplicate else 'not duplicate',
+    )
