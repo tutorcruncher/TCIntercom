@@ -5,7 +5,7 @@ import logfire
 from logfire import ConsoleOptions, PydanticPlugin
 
 
-def logfire_setup(service_name: str, console: ConsoleOptions | Literal[False] = False):
+def logfire_setup(service_name: str, console: ConsoleOptions | Literal[False] | None = False):
     from .main import app_settings
 
     if not app_settings.testing and (logfire_token := app_settings.logfire_token):
