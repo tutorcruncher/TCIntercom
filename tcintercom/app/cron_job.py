@@ -19,7 +19,7 @@ def update_duplicate_contacts():
     """
     console_options = ConsoleOptions(
         colors='auto',
-        include_timestamps=True,
+        include_timestamps=False,
         verbose=False,
         min_log_level='info',
     )
