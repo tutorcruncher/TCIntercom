@@ -1,58 +1,21 @@
+import hashlib
+import hmac
 import json
 import logging
-from datetime import datetime, timedelta
+from enum import Enum
 from typing import Optional
 
 import jwt
+import logfire
 import requests
 from jwt import InvalidSignatureError
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response
+from starlette.responses import JSONResponse
 
-from .settings import Settings
+from tcintercom.app.settings import app_settings
 
-session = requests.Session()
 logger = logging.getLogger('tc-intercom.views')
-
-conf = Settings()
-
-
-async def index(request: Request):
-    return Response("TutorCruncher's service for managing Intercom is Online")
-
-
-async def robots(request: Request):
-    return FileResponse(path='tcintercom/robots.txt', media_type='text/plain')
-
-
-async def raise_error(request: Request):
-    raise RuntimeError('Purposeful error')
-
-
-async def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET'):
-    data = data or {}
-    headers = {
-        'Authorization': 'Bearer ' + conf.ic_token,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-    if not (method == 'POST' and not conf.ic_token):
-        r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
-        r.raise_for_status()
-        return r.json()
-
-
-async def github_request(url: str, data: dict):
-    if conf.gh_token:
-        headers = {'Authorization': 'Bearer ' + conf.gh_token}
-        r = session.post(
-            'https://api.github.com/repos/tutorcruncher/tutorcruncher.com' + url,
-            json=data,
-            headers=headers,
-        )
-        r.raise_for_status()
-        return r.json()
-
+session = requests.Session()
 
 SUPPORT_TEMPLATE = """\
 Thanks for getting in touch 😃
@@ -66,108 +29,113 @@ support plan and we'll check 😃
 
 If your query is urgent, please reply with 'This is urgent' and we'll get someone to look at \
 it as soon as possible."""
-CLOSE_CONV_TEMPLATE = """\
-I'm just checking in to see how you got with the issue above?
-
-Since we haven't heard anything for \
-a week, I'm going to assume you don't need any more help and the ticket will close, but feel free to respond to \
-this message to reopen it and I'll be able to get back to you soon.
-"""
 
 
-async def check_support_reply(item: dict):
-    user_id = item['user']['id']
-    user_data = await intercom_request(f'/contacts/{user_id}/')
+class SupportTag(str, Enum):
+    NO_SUPPORT = 'No Support'
+    CHAT_SUPPORT = 'Chat Support'
+    PHONE_SUPPORT = 'Phone Support'
+
+
+async def validate_ic_webhook_signature(request: Request):
+    """
+    Validates the webhook signature from Intercom.
+
+    https://developers.intercom.com/docs/references/webhooks/webhook-models#signed-notifications
+    """
+    if app_settings.testing:
+        return
+    header_signature = request.headers.get('x-hub-signature', '')
+    payload = await request.body()
+    assert (
+        f'sha1={hmac.new(app_settings.ic_client_secret.encode(), payload, hashlib.sha1).hexdigest()}'
+        == header_signature
+    ), 'Unable to validate signature.'
+
+
+def intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
+    """
+    Makes a request to Intercom, takes the url, data and method to use when making the request.
+    """
+    data = data or {}
+    headers = {
+        'Authorization': 'Bearer ' + app_settings.ic_secret_token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    if not (method == 'POST' and not app_settings.ic_secret_token):
+        try:
+            r = session.request(method, 'https://api.intercom.io' + url, json=data, headers=headers)
+            r.raise_for_status()
+        except Exception as e:
+            logger.exception(e)
+            raise e
+        return r.json()
+
+
+async def async_intercom_request(url: str, data: Optional[dict] = None, method: str = 'GET') -> Optional[dict]:
+    """
+    Asynchronous version of intercom_request
+    """
+    return intercom_request(url, data, method)
+
+
+async def check_support_reply(item: dict) -> str:
+    """
+    Checks the support level of the company and the bot replies with the support template if they have no support.
+    """
+    if item.get('user'):
+        # This is for the old apps we have that still have User added to their webhooks.
+        user_id = item['user']['id']
+    else:
+        # This is for the newer apps that use contacts instead of user.
+        user_id = item['contacts']['contacts'][0]['id']
+    user_data = await async_intercom_request(f'/contacts/{user_id}/')
     companies = user_data.get('companies', {}).get('data')
     if not companies:
         return 'User has no companies'
-    company_data = await intercom_request(companies[0]['url'])
+    company_data = await async_intercom_request(companies[0]['url'])
     support_level = company_data.get('custom_attributes', {}).get('support_plan')
-    if support_level == 'No Support':
+    if support_level == SupportTag.NO_SUPPORT:
         reply_data = {
             'type': 'admin',
             'message_type': 'comment',
-            'admin_id': conf.ic_bot_id,
+            'admin_id': app_settings.ic_bot_id,
             'body': SUPPORT_TEMPLATE,
-            'assignee': conf.ic_bot_id,
+            'assignee': app_settings.ic_bot_id,
         }
-        await intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
+        await async_intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
         return 'Reply successfully posted'
     else:
         return 'Company has support'
 
 
-async def create_issue(part, tags):
-    data = {
-        'title': 'From IC: ' + ','.join(tags),
-        'body': '**Created from intercom**\n\n' + part['body'],
-        'labels': tags,
-    }
-    await github_request('/issues', data)
-
-
-async def snooze_conv_for_close(conv):
-    id = conv['id']
-    admin_id = conv['assignee']['id'] or conf.ic_bot_id
-    a_week_hence = (datetime.now() + timedelta(days=7)).timestamp()
-    await intercom_request(
-        f'/conversations/{id}/reply',
-        data={'message_type': 'snoozed', 'snoozed_until': a_week_hence, 'admin_id': admin_id},
-        method='POST',
-    )
-
-
-async def check_message_tags(item: dict):
-    tags = [t['name'] for t in item['tags_added']['tags']]
-    if any(t in ['New help article', 'Update help article'] for t in tags):
-        await create_issue(item['conversation_parts']['conversation_parts'][0], tags)
-        return 'Issue created with tags'
-    if 'Snooze then close' in tags:
-        await snooze_conv_for_close(item)
-        return 'Conversation snoozed while waiting for reply'
-
-
-async def close_conv(conv: dict):
-    admin_id = conv['assignee']['id'] or conf.ic_bot_id
-    data = {'message_type': 'close', 'admin_id': admin_id, 'type': 'admin', 'body': CLOSE_CONV_TEMPLATE}
-    await intercom_request(f'/conversations/{conv["id"]}/parts', method='POST', data=data)
-
-
-async def check_unsnoozed_conv(item: dict):
-    tags = [t['name'] for t in item['tags']['tags']]
-    if 'Snooze then close' in tags:
-        # The normal item doesn't have the request info
-        conv_details = await intercom_request(f'/conversations/{item["id"]}')
-        conv_stats = conv_details['statistics']
-        a_week_prev = (datetime.now() - timedelta(days=7)).timestamp()
-        dt = max(conv_stats['last_contact_reply_at'] or 0, conv_stats['last_admin_reply_at'] or 0)
-        logger.info('Checking conv %s with last reply %s against %s', item['id'], dt, a_week_prev)
-        if dt < a_week_prev:
-            await close_conv(item)
-            return 'Conversation closed because of inactivity'
-
-
-async def callback(request: Request):
+async def handle_intercom_callback(request: Request) -> JSONResponse:
+    """
+    Handles the callback from Intercom and decides what actions to take based on the topic.
+    """
+    await validate_ic_webhook_signature(request)
     try:
         data = json.loads(await request.body())
     except ValueError:
         return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
-    item_data = data['data']['item']
-    topic = data.get('topic')
+    item_data = data.get('data', {}).get('item', {})
+    topic = data.get('topic', None)
     msg = 'No action required'
+    logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
     if topic == 'conversation.user.created':
         msg = await check_support_reply(item_data) or msg
-    elif topic == 'conversation_part.tag.created':
-        msg = await check_message_tags(item_data) or msg
-    elif topic == 'conversation.admin.unsnoozed':
-        msg = await check_unsnoozed_conv(item_data) or msg
-    logger.info({'conversation': item_data['id'], 'message': msg})
+    logger.info('Conversation ID: {id} - {msg}'.format(id=item_data.get('id'), msg=msg))
     return JSONResponse({'message': msg})
 
 
-async def blog_callback(request: Request):
+async def handle_blog_callback(request: Request) -> JSONResponse:
+    """
+    Handles the callback from Netlify and updates the user's Intercom profile with the blog subscription custom
+    attribute, if they don't exist then we create a new user in Intercom for that email address.
+    """
     try:
-        jwt.decode(request.headers['x-webhook-signature'], conf.netlify_key, algorithms="HS256")
+        jwt.decode(request.headers['x-webhook-signature'], app_settings.netlify_key, algorithms='HS256')
     except InvalidSignatureError:
         return JSONResponse({'error': 'Invalid Signature'}, status_code=400)
 
@@ -178,13 +146,14 @@ async def blog_callback(request: Request):
 
     data = data['data']
     q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
-    r = await intercom_request('/contacts/search', data=q, method='POST')
+    r = await async_intercom_request('/contacts/search', data=q, method='POST')
 
+    logfire.info('Blog callback', data=data)
     data_to_send = {'role': 'user', 'email': data['email'], 'custom_attributes': {'blog-subscribe': True}}
     if r.get('data'):
-        await intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
+        await async_intercom_request(url=f'/contacts/{r["data"][0]["id"]}', data=data_to_send, method='PUT')
         msg = 'Blog subscription added to existing user'
     else:
-        await intercom_request(url='/contacts', data=data_to_send, method='POST')
+        await async_intercom_request(url='/contacts', data=data_to_send, method='POST')
         msg = 'Blog subscription added to a new user'
     return JSONResponse({'message': msg})

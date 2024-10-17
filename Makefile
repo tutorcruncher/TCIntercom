@@ -1,6 +1,7 @@
 .PHONY: install
 install:
 	pip install -r requirements.txt
+	pip install devtools
 
 .PHONY: test
 test:
@@ -8,11 +9,14 @@ test:
 
 .PHONY: format
 format:
-	isort -w 120 tcintercom
-	isort -w 120 tests
-	black -S -l 120 --target-version py38 tcintercom tests
+	ruff check --fix .
+	ruff format .
 
 .PHONY: lint
 lint:
-	flake8 tests/ tcintercom/
+	ruff check .
+	ruff format --check .
 
+.PHONY: web
+web:
+	python3 tcintercom/run.py web
