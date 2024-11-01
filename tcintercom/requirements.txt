@@ -8,6 +8,6 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 PyJWT==2.9.0
 requests==2.32.3
-sentry-sdk[fastapi]==2.14.0
+sentry-sdk[fastapi]==2.17.0
 starlette==0.39.2
 uvicorn==0.31.0
