@@ -5,10 +5,8 @@ import logging
 from enum import Enum
 from typing import Optional
 
-import jwt
 import logfire
 import requests
-from jwt import InvalidSignatureError
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -135,17 +133,16 @@ async def handle_blog_callback(request: Request) -> JSONResponse:
     attribute, if they don't exist then we create a new user in Intercom for that email address.
     """
     try:
-        jwt.decode(request.headers['x-webhook-signature'], app_settings.netlify_key, algorithms='HS256')
-    except InvalidSignatureError:
-        return JSONResponse({'error': 'Invalid Signature'}, status_code=400)
-
-    try:
         data = json.loads(await request.body())
     except ValueError:
         return JSONResponse({'error': 'Invalid JSON'}, status_code=400)
 
-    data = data['data']
-    q = {'query': {'field': 'email', 'operator': '=', 'value': data['email']}}
+    if not (email := data.get('email')):
+        return JSONResponse({'error': 'Email address is required'}, status_code=400)
+
+    # TODO: We should probably validate the email address here
+
+    q = {'query': {'field': 'email', 'operator': '=', 'value': email}}
     r = await async_intercom_request('/contacts/search', data=q, method='POST')
 
     logfire.info('Blog callback', data=data)
