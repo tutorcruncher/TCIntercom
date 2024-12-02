@@ -3,14 +3,12 @@ import hmac
 import json
 from unittest import TestCase, mock
 
-import jwt
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from requests import RequestException
 
 from tcintercom.app.logs import logfire_setup
 from tcintercom.app.main import create_app
-from tcintercom.app.settings import app_settings
 from tcintercom.app.views import SUPPORT_TEMPLATE
 from tcintercom.run import main
 
@@ -343,13 +341,21 @@ class BlogCallbackTestCase(TestCase):
         blog-subscribe True attribute.
         """
         mock_request.side_effect = get_mock_response('blog_new_user')
-        encoded_jwt = jwt.encode({'some': 'payload'}, app_settings.netlify_key, algorithm='HS256')
 
-        form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
+        form_data = {'email': 'test@testing.com'}
+        r = self.client.post(self.blog_callback_url, json=form_data)
         assert r.json() == {'message': 'Blog subscription added to a new user'}
         assert mock_request.call_args_list[-1][0][0] == 'POST'  # Assert POST request (creating rather than updating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
+
+    def test_blank_email_address(self):
+        """
+        Tests when we submit a blank email address, we return 'Email address is required'.
+        """
+
+        form_data = {'email': ''}
+        r = self.client.post(self.blog_callback_url, json=form_data)
+        assert r.status_code == 400
 
     @mock.patch('tcintercom.app.views.session.request')
     def test_blog_sub_existing_user(self, mock_request):
@@ -358,10 +364,9 @@ class BlogCallbackTestCase(TestCase):
         blog-subscribe True attribute to them.
         """
         mock_request.side_effect = get_mock_response('blog_existing_user')
-        encoded_jwt = jwt.encode({'some': 'payload'}, app_settings.netlify_key, algorithm='HS256')
 
-        form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
+        form_data = {'email': 'test@testing.com'}
+        r = self.client.post(self.blog_callback_url, json=form_data)
         assert r.json() == {'message': 'Blog subscription added to existing user'}
         assert mock_request.call_args_list[-1][0][0] == 'PUT'  # Assert PUT request (updating rather than creating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
@@ -377,13 +382,3 @@ class BlogCallbackTestCase(TestCase):
         )
         assert r.status_code == 400
         assert r.content.decode() == '{"error":"Invalid JSON"}'
-
-    def test_incorrect_key(self):
-        """
-        Test that if the signature is incorrect we return an incorrect signature error.
-        """
-        encoded_jwt = jwt.encode({'some': 'payload'}, 'incorrect_key', algorithm='HS256')
-
-        form_data = {'data': {'email': 'test@testing.com'}}
-        r = self.client.post(self.blog_callback_url, json=form_data, headers={'x-webhook-signature': encoded_jwt})
-        assert r.json() == {'error': 'Invalid Signature'}
