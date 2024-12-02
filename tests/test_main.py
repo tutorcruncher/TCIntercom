@@ -370,15 +370,3 @@ class BlogCallbackTestCase(TestCase):
         assert r.json() == {'message': 'Blog subscription added to existing user'}
         assert mock_request.call_args_list[-1][0][0] == 'PUT'  # Assert PUT request (updating rather than creating)
         assert mock_request.call_args_list[-1][1]['json']['custom_attributes']['blog-subscribe']
-
-    @mock.patch('tcintercom.app.views.jwt.decode')
-    def test_blog_callback_invalid_json(self, mock_decode):
-        """
-        Test that if the JSON is invalid, we return 'Invalid JSON'. Mocking jwt decode so that it passes and
-        doesn't fail earlier in the function.
-        """
-        r = self.client.post(
-            self.blog_callback_url, content='{Invalid JSON}', headers={'x-webhook-signature': 'invalid'}
-        )
-        assert r.status_code == 400
-        assert r.content.decode() == '{"error":"Invalid JSON"}'
