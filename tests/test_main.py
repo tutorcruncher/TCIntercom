@@ -222,11 +222,9 @@ class IntercomCallbackTestCase(TestCase):
         """
         test_secret_key = 'TESTKEY'
         data = {'data': {'item': {'id': 500}}}
-        signature = f'sha1={hmac.new(test_secret_key.encode(), json.dumps(data).encode(), hashlib.sha1).hexdigest()}'
+        signature = f'sha1={hmac.new(test_secret_key.encode(), json.dumps(data).replace(" ", "").encode(), hashlib.sha1).hexdigest()}'
 
-        r = self.client.post(
-            self.callback_url, json={'data': {'item': {'id': 500}}}, headers={'X-Hub-Signature': signature}
-        )
+        r = self.client.post(self.callback_url, json=data, headers={'X-Hub-Signature': signature})
         assert r.status_code == 200
         assert r.json() == {'message': 'No action required'}
 
