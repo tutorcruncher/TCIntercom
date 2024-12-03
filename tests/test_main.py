@@ -222,6 +222,11 @@ class IntercomCallbackTestCase(TestCase):
         """
         test_secret_key = 'TESTKEY'
         data = {'data': {'item': {'id': 500}}}
+        print('--- In test ---')
+        print(test_secret_key)
+        print(data)
+        print(json.dumps(data).encode())
+        print('--- Leaving test ---')
         signature = f'sha1={hmac.new(test_secret_key.encode(), json.dumps(data).encode(), hashlib.sha1).hexdigest()}'
 
         r = self.client.post(
