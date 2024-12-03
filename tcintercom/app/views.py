@@ -47,6 +47,7 @@ async def validate_ic_webhook_signature(request: Request):
     payload = await request.body()
     print(header_signature)
     print(payload)
+    print(app_settings.ic_client_secret)
     print(f'sha1={hmac.new(app_settings.ic_client_secret.encode(), payload, hashlib.sha1).hexdigest()}')
     assert (
         f'sha1={hmac.new(app_settings.ic_client_secret.encode(), payload, hashlib.sha1).hexdigest()}'
