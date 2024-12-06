@@ -5,6 +5,7 @@ import sentry_sdk
 from arq import create_pool
 from fastapi import FastAPI
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from starlette.middleware.cors import CORSMiddleware
 
 from .logs import logfire_setup
 from .routers.views import views_router
@@ -21,6 +22,11 @@ async def lifespan(app):
 def create_app():
     app = FastAPI(lifespan=lifespan)
     app.include_router(views_router)
+
+    allowed_origins = ['https://tutorcruncher.com', 'http://localhost:8000', 'https://tutorcruncher.vercel.app']
+    if app_settings.dev_mode:
+        allowed_origins = ['*']
+    app.add_middleware(CORSMiddleware, allow_origins=allowed_origins, allow_methods=['*'], allow_headers=['*'])
 
     if app_settings.logfire_token:
         logfire_setup('web')

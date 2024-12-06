@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     raven_dsn: str = ''
     logfire_token: str = ''
     log_level: str = 'INFO'
+    dev_mode: bool = False
 
     @property
     def redis_settings(self):
