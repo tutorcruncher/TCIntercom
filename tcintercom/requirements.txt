@@ -3,7 +3,7 @@ aioredis==2.0.1
 arq==0.26.1
 fastapi==0.115.5
 httpx==0.28.0
-logfire[fastapi]==2.5.0
+logfire[fastapi]==2.11.1
 pydantic==2.10.2
 pydantic-settings==2.6.1
 PyJWT==2.10.1
