@@ -102,7 +102,7 @@ async def check_support_reply(item: dict) -> str:
             'body': SUPPORT_TEMPLATE,
             'assignee': app_settings.ic_bot_id,
         }
-        await async_intercom_request(f"/conversations/{item['id']}/reply/", data=reply_data, method='POST')
+        await async_intercom_request(f'/conversations/{item["id"]}/reply/', data=reply_data, method='POST')
         return 'Reply successfully posted'
     else:
         return 'Company has support'
