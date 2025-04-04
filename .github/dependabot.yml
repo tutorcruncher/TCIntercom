@@ -36,3 +36,7 @@ updates:
   - dependency-name: arq
     versions:
     - 0.19.1
+  groups:
+    python-packages:
+      patterns:
+        - "*"
