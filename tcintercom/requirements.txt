@@ -1,13 +1,13 @@
 aiofiles==24.1.0
 aioredis==2.0.1
 arq==0.26.3
-fastapi==0.115.14
+fastapi==0.116.1
 httpx==0.28.1
-logfire[fastapi]==3.21.2
+logfire[fastapi]==4.0.1
 pydantic==2.11.7
 pydantic-settings==2.10.1
 PyJWT==2.10.1
 requests==2.32.4
-sentry-sdk[fastapi]==2.32.0
-starlette==0.46.2
+sentry-sdk[fastapi]==2.34.1
+starlette==0.47.2
 uvicorn==0.35.0
