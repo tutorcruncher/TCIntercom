@@ -24,12 +24,13 @@ jobs:
     - name: set up python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.13'
+
+    - name: install uv
+      uses: astral-sh/setup-uv@v5
 
     - name: install dependencies
-      run: |
-        make install
-        pip freeze
+      run: make install-dev
     - name: lint
       run: make lint
 
