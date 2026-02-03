@@ -5,48 +5,27 @@ from unittest import TestCase, mock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from requests import RequestException
 
 from tcintercom.app.logs import logfire_setup
 from tcintercom.app.main import create_app
-from tcintercom.app.views import SUPPORT_TEMPLATE
 from tcintercom.run import main
 
 
-def get_mock_response(test, error=False):
+def get_mock_response(test):
     class MockResponse:
         def __init__(self, method, url, *args, **kwargs):
             self.url = url
-            self.return_company = {
-                'companies': {
-                    'type': 'list',
-                    'data': [{'id': '123', 'name': 'Foo company', 'url': '/companies/123'}],
-                }
-            }
             self.return_dict = {
-                'no_companies': {'companies': {'type': 'list', 'data': []}},
                 'blog_new_user': {'data': []},
                 'blog_existing_user': {'data': [{'id': 123}]},
-                'blog_invalid_json': '{Invalid JSON}',
             }
 
         def json(self):
-            if test == 'no_support':
-                if 'contacts/' in self.url:
-                    return self.return_company
-                else:
-                    return {'custom_attributes': {'support_plan': 'No Support'}}
-            elif test == 'has_support':
-                if 'contacts/' in self.url:
-                    return self.return_company
-                else:
-                    return {'custom_attributes': {'support_plan': 'Support plan'}}
-            elif test in self.return_dict:
+            if test in self.return_dict:
                 return self.return_dict[test]
 
         def raise_for_status(self):
-            if error:
-                raise RequestException('Bad request')
+            pass
 
     return MockResponse
 
@@ -197,23 +176,6 @@ class IntercomCallbackTestCase(TestCase):
         assert r.status_code == 405
         assert r.content.decode() == '{"detail":"Method Not Allowed"}'
 
-    @mock.patch('tcintercom.app.views.logger.exception')
-    @mock.patch('tcintercom.app.views.session.request')
-    @mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
-    def test_invalid_intercom_request(self, mock_request, mock_logger):
-        """
-        Tests that if the request to intercom is invalid, we log the exception and raise it.
-        """
-        mock_request.side_effect = get_mock_response('no_support', error=True)
-        ic_data = {
-            'topic': 'conversation.user.created',
-            'data': {'item': {'user': {'id': 123}, 'id': 123}},
-        }
-        with self.assertRaises(RequestException):
-            self.client.post(self.callback_url, json=ic_data)
-
-        assert mock_logger.called
-
     @mock.patch('tcintercom.app.settings.app_settings.testing', False)
     @mock.patch('tcintercom.app.settings.app_settings.ic_client_secret', 'TESTKEY')
     def test_validated_webhook_sig(self):
@@ -239,78 +201,13 @@ class IntercomCallbackTestCase(TestCase):
         assert r.status_code == 400
         assert r.content.decode() == '{"error":"Invalid JSON"}'
 
-    @mock.patch('tcintercom.app.views.session.request')
-    def test_conv_created_user_no_companies(self, mock_request):
+    def test_conversation_user_created(self):
         """
-        Test that if a user has no companies, we return 'User has no companies'.
+        Test that conversation.user.created topic returns 'No action required' (no auto-reply).
         """
-        mock_request.side_effect = get_mock_response('no_companies')
-
         ic_data = {
             'topic': 'conversation.user.created',
             'data': {'item': {'user': {'id': 123}, 'id': 123}},
-        }
-        r = self.client.post(self.callback_url, json=ic_data)
-        assert r.json() == {'message': 'User has no companies'}
-
-    @mock.patch('tcintercom.app.views.session.request')
-    @mock.patch('tcintercom.app.settings.app_settings.ic_secret_token', 'TESTKEY')
-    def test_conv_created_no_support(self, mock_request):
-        """
-        Test that if a user has no support, the bot posts the SUPPORT_TEMPLATE reply to the conversation.
-        """
-        mock_request.side_effect = get_mock_response('no_support')
-        ic_data = {
-            'topic': 'conversation.user.created',
-            'data': {'item': {'user': {'id': 123}, 'id': 123}},
-        }
-        r = self.client.post(self.callback_url, json=ic_data)
-        assert r.json() == {'message': 'Reply successfully posted'}
-        assert mock_request.call_args_list[-1][1]['json']['body'] == SUPPORT_TEMPLATE
-
-    @mock.patch('tcintercom.app.views.session.request')
-    def test_conv_created_has_support(self, mock_request):
-        """
-        Test that if a company has support, we return 'Company has support'.
-        """
-        mock_request.side_effect = get_mock_response('has_support')
-        ic_data = {
-            'topic': 'conversation.user.created',
-            'data': {'item': {'user': {'id': 123}, 'id': 123}},
-        }
-        r = self.client.post(self.callback_url, json=ic_data)
-        assert r.json() == {'message': 'Company has support'}
-
-    @mock.patch('tcintercom.app.views.session.request')
-    def test_conv_created_new_apps(self, mock_request):
-        """
-        Our current apps are old and use the User on the webhook, since then Intercom have changed this so any newly
-        created apps use contact. This is a test for if we switch to the new style, it won't break anything.
-        """
-        mock_request.side_effect = get_mock_response('has_support')
-        ic_data = {
-            'topic': 'conversation.user.created',
-            'data': {'item': {'contacts': {'contacts': [{'id': 123}]}}},
-        }
-        r = self.client.post(self.callback_url, json=ic_data)
-        assert r.json() == {'message': 'Company has support'}
-
-    def test_message_tagged_wrong_tag(self):
-        """
-        Test that if a tag is applied that we don't want to act on, we return 'No action required'.
-        """
-        ic_data = {
-            'topic': 'conversation_part.tag.created',
-            'data': {
-                'item': {
-                    'id': 123,
-                    'tags_added': {'type': 'tag.list', 'tags': [{'name': 'Wrong tag'}]},
-                    'conversation_parts': {
-                        'type': 'conversation_part.list',
-                        'conversation_parts': [{'body': 'A new issue please'}],
-                    },
-                }
-            },
         }
         r = self.client.post(self.callback_url, json=ic_data)
         assert r.json() == {'message': 'No action required'}

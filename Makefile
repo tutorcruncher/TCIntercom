@@ -1,22 +1,33 @@
-.PHONY: install
+.PHONY: install install-dev dev test lint format clean seed reset-db celery celery-worker celery-beat celery-dev setup-billing
+
+# Install dependencies (normal packages only)
 install:
-	pip install -r requirements.txt
-	pip install devtools
+	uv sync
 
-.PHONY: test
+# Install dependencies (including dev packages)
+install-dev:
+	uv sync --dev
+
+# Run tests (migrations first, then others)
 test:
-	pytest --cov=tcintercom
+	uv run pytest tests/
 
-.PHONY: format
-format:
-	ruff check --fix .
-	ruff format .
+# Run tests with coverage (migrations first)
+test-cov:
+	uv run coverage run -m pytest tests/
+	uv run coverage report
+	uv run coverage xml -o coverage.xml
 
-.PHONY: lint
+# Lint code
 lint:
-	ruff check .
-	ruff format --check .
+	uv run --active ruff check .
+	uv run --active ruff format --check .
 
-.PHONY: web
+# Format code
+format:
+	uv run --active ruff check --fix .
+	uv run --active ruff format .
+
+# Run web server
 web:
-	python3 tcintercom/run.py web
+	uv run python tcintercom/run.py web

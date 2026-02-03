@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     testing: bool = False
     ic_secret_token: str = ''
     ic_client_secret: str = ''
-    ic_bot_id: int = 2693259
     redis_url: str = 'redis://localhost:6379'
     tc_url: str = 'http://tutorcruncher.com'
     netlify_key: str = ''

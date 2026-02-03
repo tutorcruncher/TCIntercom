@@ -1,2 +1,0 @@
--r tcintercom/requirements.txt
--r tests/requirements.test.txt

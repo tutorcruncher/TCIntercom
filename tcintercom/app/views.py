@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import logging
-from enum import Enum
 from typing import Optional
 
 import logfire
@@ -14,25 +13,6 @@ from tcintercom.app.settings import app_settings
 
 logger = logging.getLogger('tc-intercom.views')
 session = requests.Session()
-
-SUPPORT_TEMPLATE = """\
-Thanks for getting in touch 😃
-
-We try to get back to everyone within 2 working days, but most of the time it's quicker!
-
-If you wish to upgrade your support plan, you can do that \
-for only $12 by clicking <a href="https://secure.tutorcruncher.com/billing"/>here</a>! \
-Please note this might take an hour to update, so just reply here saying you've changed your \
-support plan and we'll check 😃
-
-If your query is urgent, please reply with 'This is urgent' and we'll get someone to look at \
-it as soon as possible."""
-
-
-class SupportTag(str, Enum):
-    NO_SUPPORT = 'No Support'
-    CHAT_SUPPORT = 'Chat Support'
-    PHONE_SUPPORT = 'Phone Support'
 
 
 async def validate_ic_webhook_signature(request: Request):
@@ -78,39 +58,9 @@ async def async_intercom_request(url: str, data: Optional[dict] = None, method: 
     return intercom_request(url, data, method)
 
 
-async def check_support_reply(item: dict) -> str:
-    """
-    Checks the support level of the company and the bot replies with the support template if they have no support.
-    """
-    if item.get('user'):
-        # This is for the old apps we have that still have User added to their webhooks.
-        user_id = item['user']['id']
-    else:
-        # This is for the newer apps that use contacts instead of user.
-        user_id = item['contacts']['contacts'][0]['id']
-    user_data = await async_intercom_request(f'/contacts/{user_id}/')
-    companies = user_data.get('companies', {}).get('data')
-    if not companies:
-        return 'User has no companies'
-    company_data = await async_intercom_request(companies[0]['url'])
-    support_level = company_data.get('custom_attributes', {}).get('support_plan')
-    if support_level == SupportTag.NO_SUPPORT:
-        reply_data = {
-            'type': 'admin',
-            'message_type': 'comment',
-            'admin_id': app_settings.ic_bot_id,
-            'body': SUPPORT_TEMPLATE,
-            'assignee': app_settings.ic_bot_id,
-        }
-        await async_intercom_request(f'/conversations/{item["id"]}/reply/', data=reply_data, method='POST')
-        return 'Reply successfully posted'
-    else:
-        return 'Company has support'
-
-
 async def handle_intercom_callback(request: Request) -> JSONResponse:
     """
-    Handles the callback from Intercom and decides what actions to take based on the topic.
+    Handles the callback from Intercom and logs the topic.
     """
     await validate_ic_webhook_signature(request)
     try:
@@ -121,8 +71,6 @@ async def handle_intercom_callback(request: Request) -> JSONResponse:
     topic = data.get('topic', None)
     msg = 'No action required'
     logfire.info('Intercom callback topic={topic}', topic=topic, data=data)
-    if topic == 'conversation.user.created':
-        msg = await check_support_reply(item_data) or msg
     logger.info('Conversation ID: {id} - {msg}'.format(id=item_data.get('id'), msg=msg))
     return JSONResponse({'message': msg})
 
