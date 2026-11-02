@@ -1,10 +1,13 @@
 import hashlib
 import hmac
 import json
+import os
 from unittest import TestCase, mock
 
+import logfire
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from logfire.integrations.pydantic import get_pydantic_plugin_config
 
 from tcintercom.app.logs import logfire_setup
 from tcintercom.app.main import create_app
@@ -84,6 +87,23 @@ class TCIntercomSetup(TestCase):
         logfire_setup('test')
         assert mock_configure.called
         assert mock_configure.call_count == 1
+
+    @mock.patch.dict(os.environ, {'LOGFIRE_BASE_URL': 'http://127.0.0.1:9'})
+    @mock.patch('tcintercom.app.main.app_settings')
+    def test_setup_logfire_real_configure(self, mock_app_settings):
+        """
+        Runs the real logfire.configure (not mocked) so an argument logfire no longer accepts fails here rather than
+        on deploy. LOGFIRE_BASE_URL points at a closed local port, so nothing is ever sent to Logfire.
+        """
+        mock_app_settings.testing = False
+        mock_app_settings.logfire_token = 'not-a-real-token'
+
+        try:
+            logfire_setup('test')
+            assert get_pydantic_plugin_config().record == 'all'
+        finally:
+            logfire.instrument_pydantic(record='off')
+            logfire.configure(send_to_logfire=False, console=False)
 
     @mock.patch('tcintercom.app.main.app_settings')
     @mock.patch('tcintercom.app.main.sentry_sdk.init')
