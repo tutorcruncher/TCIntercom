@@ -2,7 +2,7 @@ import logging.config
 from typing import Literal, Union
 
 import logfire
-from logfire import ConsoleOptions, PydanticPlugin
+from logfire import ConsoleOptions
 
 
 def logfire_setup(service_name: str, console: Union[ConsoleOptions, Literal[False], None] = False):
@@ -13,9 +13,9 @@ def logfire_setup(service_name: str, console: Union[ConsoleOptions, Literal[Fals
             service_name=service_name,
             send_to_logfire=True,
             token=logfire_token,
-            pydantic_plugin=PydanticPlugin(record='all'),
             console=console,
         )
+        logfire.instrument_pydantic(record='all')
 
 
 def setup_logging():
